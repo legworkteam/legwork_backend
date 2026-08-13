@@ -7,12 +7,14 @@ from app.core.config import settings
 from app.core.responses import ApiResponse, success_response
 from app.modules.auth.router import router as auth_router
 from app.modules.guests.router import router as guests_router
+from app.modules.products.router import router as products_router
 from app.utils.datetime import now_kst
 
 
 api_router = APIRouter()
 api_router.include_router(auth_router)
 api_router.include_router(guests_router)
+api_router.include_router(products_router)
 
 
 class HealthResponse(BaseModel):

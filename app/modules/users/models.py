@@ -7,7 +7,7 @@ accounts carry providerUserId. Soft-deleted via deletedAt.
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, UniqueConstraint
+from sqlalchemy import DateTime, Index, Integer, String, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base, TimestampMixin, UUIDMixin
@@ -17,9 +17,16 @@ from app.core.enums import AuthProvider, pg_enum
 class User(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "user"
     __table_args__ = (
-        # Google/Kakao identity uniqueness; LOCAL email uniqueness is enforced
-        # via a partial index created in the migration (active accounts only).
+        # Google/Kakao identity uniqueness.
         UniqueConstraint("authProvider", "providerUserId", name="uq_user_provider_identity"),
+        # LOCAL email unique among active (non-deleted) accounts only. Declared
+        # here so Alembic autogenerate keeps metadata in sync with the DB.
+        Index(
+            "uq_user_local_email_active",
+            "email",
+            unique=True,
+            postgresql_where=text("\"authProvider\" = 'local' AND \"deletedAt\" IS NULL"),
+        ),
     )
 
     name: Mapped[str] = mapped_column(String(80), nullable=False)
