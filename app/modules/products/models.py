@@ -9,6 +9,7 @@ carries style/color/season values used by recommendations.
 import uuid
 from datetime import datetime
 
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -110,3 +111,18 @@ class RecentProduct(UUIDMixin, Base):
     viewed_at: Mapped[datetime] = mapped_column(
         "viewedAt", DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class ProductCareGuide(UUIDMixin, TimestampMixin, Base):
+    """Per-product care guide. Falls back to a category default in the service
+    layer when a product has no specific guide."""
+
+    __tablename__ = "productCareGuide"
+    __table_args__ = (Index("ix_productCareGuide_productId", "productId"),)
+
+    product_id: Mapped[uuid.UUID] = mapped_column(
+        "productId", ForeignKey("product.id", ondelete="CASCADE"), nullable=False
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    guide_json: Mapped[dict] = mapped_column("guideJson", JSONB, nullable=False)
+    as_info_json: Mapped[dict | None] = mapped_column("asInfoJson", JSONB, nullable=True)

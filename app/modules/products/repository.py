@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.products.models import (
     Product,
+    ProductCareGuide,
     ProductImage,
     ProductTag,
     ProductVariant,
@@ -47,6 +48,11 @@ class ProductRepository:
 
     async def get_variant_by_id(self, variant_id: uuid.UUID) -> ProductVariant | None:
         return await self.session.get(ProductVariant, variant_id)
+
+    async def get_care_guide(self, product_id: uuid.UUID) -> ProductCareGuide | None:
+        return await self.session.scalar(
+            select(ProductCareGuide).where(ProductCareGuide.product_id == product_id)
+        )
 
     async def get_products_by_ids(
         self, product_ids: list[uuid.UUID]
