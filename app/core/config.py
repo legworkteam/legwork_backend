@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     app_env: str = Field(default="local", alias="APP_ENV")
     app_name: str = Field(default="Atelier Lens API", alias="APP_NAME")
     api_v1_prefix: str = Field(default="/api/v1", alias="API_V1_PREFIX")
+    backend_cors_origins: str = Field(
+        default="http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173",
+        alias="BACKEND_CORS_ORIGINS",
+    )
 
     database_url: str = Field(
         default="postgresql+asyncpg://atelier_lens:atelier_lens@localhost:5432/atelier_lens",
@@ -37,6 +41,14 @@ class Settings(BaseSettings):
     google_client_secret: str = Field(default="", alias="GOOGLE_CLIENT_SECRET")
     kakao_client_id: str = Field(default="", alias="KAKAO_CLIENT_ID")
     kakao_client_secret: str = Field(default="", alias="KAKAO_CLIENT_SECRET")
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [
+            origin.strip()
+            for origin in self.backend_cors_origins.split(",")
+            if origin.strip()
+        ]
 
 
 @lru_cache

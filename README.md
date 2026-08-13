@@ -38,6 +38,7 @@ Create `.env` from `.env.example`.
 
 Required values:
 
+- `BACKEND_CORS_ORIGINS`
 - `POSTGRES_DB`
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
@@ -48,6 +49,7 @@ Notes:
 
 - `JWT_SECRET_KEY` should be at least 32 bytes.
 - `FILE_ROOT` defaults to `./data`.
+- `BACKEND_CORS_ORIGINS` is a comma-separated origin list for browser access.
 
 ## Install
 

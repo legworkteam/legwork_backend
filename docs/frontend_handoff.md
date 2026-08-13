@@ -4,6 +4,11 @@ Base URL:
 
 - local: `http://127.0.0.1:8000/api/v1`
 
+CORS:
+
+- backend uses `BACKEND_CORS_ORIGINS`
+- local default allows `localhost:3000`, `127.0.0.1:3000`, `localhost:5173`, `127.0.0.1:5173`
+
 ## Auth
 
 Member JWT header:
@@ -105,6 +110,7 @@ Member only:
 - `PATCH /cart/items/{cartItemId}`
 - `DELETE /cart/items/{cartItemId}`
 - `POST /orders`
+- `GET /stores`
 - `GET /me/orders`
 - `GET /me/orders/{orderId}`
 - `POST /me/products`
@@ -121,6 +127,29 @@ Member only:
 Guest avatar parameters:
 
 - `PUT /guest-sessions/me/avatar-parameters`
+
+## Request shape notes
+
+- `POST /cart/items`
+  - body: `{"variantId":"uuid","quantity":1}`
+  - response is the full cart object, not a single item object
+  - created cart item id is at `data.items[].cartItemId`
+
+- `POST /orders`
+  - body: `{"cartItemIds":["uuid"],"paymentMethod":"mock"}`
+
+- `GET /stores`
+  - member auth required
+  - response shape: `data.stores[]`
+
+- `POST /repair-reservations`
+  - body: `{"diagnosisId":"uuid","storeId":"uuid","slot":"ISO8601 datetime with timezone","note":"optional"}`
+
+- `GET /me/products`
+  - registration key is `registrationId`
+
+- `POST /me/coordis`
+  - created coordi key is `savedCoordiId`
 
 ## Common error codes
 

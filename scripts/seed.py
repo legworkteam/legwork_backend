@@ -142,57 +142,104 @@ async def _get_or_create_qr(
 
 
 async def _seed_product(session: AsyncSession, spec: dict) -> bool:
-    """Create a product with variants/tags/image/care-guide. Returns True if new."""
-    existing = await session.scalar(
+    """Upsert a product with variants/tags/image/care-guide. Returns True if new."""
+    product = await session.scalar(
         select(Product).where(Product.product_code == spec["code"])
     )
-    if existing is not None:
-        return False
+    created = False
+    if product is None:
+        product = Product(
+            product_code=spec["code"],
+            name=spec["name"],
+            category=spec["category"],
+            base_price=spec["price"],
+            currency="KRW",
+            active=True,
+        )
+        session.add(product)
+        await session.flush()
+        created = True
+    else:
+        product.name = spec["name"]
+        product.category = spec["category"]
+        product.base_price = spec["price"]
+        product.currency = "KRW"
+        product.active = True
 
-    product = Product(
-        product_code=spec["code"],
-        name=spec["name"],
-        category=spec["category"],
-        base_price=spec["price"],
-        currency="KRW",
-        active=True,
-    )
-    session.add(product)
-    await session.flush()
-
+    existing_variants = {
+        variant.sku: variant
+        for variant in (
+            await session.scalars(
+                select(ProductVariant).where(ProductVariant.product_id == product.id)
+            )
+        )
+    }
     for i, (color, size, price, stock) in enumerate(spec["variants"]):
-        session.add(
-            ProductVariant(
+        sku = f"{spec['code']}-{color[:3].upper()}-{size}-{i}"
+        variant = existing_variants.get(sku)
+        if variant is None:
+            variant = ProductVariant(
                 product_id=product.id,
-                sku=f"{spec['code']}-{color[:3].upper()}-{size}-{i}",
+                sku=sku,
                 color=color,
                 size=size,
                 price=price,
                 stock=stock,
                 active=True,
             )
-        )
-    for tag_type, tag_value in spec["tags"].items():
-        session.add(
-            ProductTag(product_id=product.id, tag_type=tag_type, tag_value=tag_value)
-        )
-    # placeholder thumbnail (Backend B owns real FileMetadata)
-    session.add(
-        ProductImage(
-            product_id=product.id, file_id=uuid.uuid4(), type="thumbnail", sort_order=0
-        )
-    )
-    care = spec.get("care")
-    if care:
-        session.add(
-            ProductCareGuide(
-                product_id=product.id,
-                title=care["title"],
-                guide_json=care["guide"],
-                as_info_json=care.get("asInfo"),
+            session.add(variant)
+        else:
+            variant.color = color
+            variant.size = size
+            variant.price = price
+            variant.stock = stock
+            variant.active = True
+
+    existing_tags = {
+        (tag.tag_type, tag.tag_value)
+        for tag in (
+            await session.scalars(
+                select(ProductTag).where(ProductTag.product_id == product.id)
             )
         )
-    return True
+    }
+    for tag_type, tag_value in spec["tags"].items():
+        if (tag_type, tag_value) not in existing_tags:
+            session.add(
+                ProductTag(product_id=product.id, tag_type=tag_type, tag_value=tag_value)
+            )
+
+    existing_image = await session.scalar(
+        select(ProductImage)
+        .where(ProductImage.product_id == product.id)
+        .order_by(ProductImage.sort_order.asc(), ProductImage.id.asc())
+    )
+    if existing_image is None:
+        session.add(
+            ProductImage(
+                product_id=product.id, file_id=uuid.uuid4(), type="thumbnail", sort_order=0
+            )
+        )
+
+    care = spec.get("care")
+    if care:
+        existing_care = await session.scalar(
+            select(ProductCareGuide).where(ProductCareGuide.product_id == product.id)
+        )
+        if existing_care is None:
+            session.add(
+                ProductCareGuide(
+                    product_id=product.id,
+                    title=care["title"],
+                    guide_json=care["guide"],
+                    as_info_json=care.get("asInfo"),
+                )
+            )
+        else:
+            existing_care.title = care["title"]
+            existing_care.guide_json = care["guide"]
+            existing_care.as_info_json = care.get("asInfo")
+    return created
 
 
 async def seed() -> None:
