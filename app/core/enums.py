@@ -28,6 +28,26 @@ class Gender(StrEnum):
     NEUTRAL = "neutral"
 
 
+class OrderStatus(StrEnum):
+    PENDING = "pending"
+    PAID = "paid"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class PaymentStatus(StrEnum):
+    READY = "ready"
+    SUCCESS = "success"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    REFUNDED = "refunded"
+
+
+class RegisteredProductSource(StrEnum):
+    PURCHASE = "purchase"
+    MANUAL = "manual"
+
+
 # --- Backend B (Experience & AI) --------------------------------------------
 class FileOwnerType(StrEnum):
     GUEST = "guest"

@@ -53,6 +53,18 @@ class CartRepository:
             .where(CartItem.id == cart_item_id, Cart.user_id == user_id)
         )
 
+    async def get_items_for_user(
+        self, cart_item_ids: list[uuid.UUID], user_id: uuid.UUID
+    ) -> list[CartItem]:
+        if not cart_item_ids:
+            return []
+        result = await self.session.scalars(
+            select(CartItem)
+            .join(Cart, Cart.id == CartItem.cart_id)
+            .where(CartItem.id.in_(cart_item_ids), Cart.user_id == user_id)
+        )
+        return list(result)
+
     async def add_item(
         self, *, cart_id: uuid.UUID, variant_id: uuid.UUID, quantity: int
     ) -> CartItem:
