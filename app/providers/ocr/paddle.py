@@ -81,12 +81,12 @@ class PaddleOcrProvider(OcrProvider):
         os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
         try:
             self._ocr = PaddleOCR(
-                ocr_version="PP-OCRv5",
+                text_detection_model_name="PP-OCRv5_mobile_det",
+                text_recognition_model_name="en_PP-OCRv5_mobile_rec",
                 use_doc_orientation_classify=False,
                 use_doc_unwarping=False,
                 use_textline_orientation=False,
                 enable_mkldnn=False,
-                lang="en",
             )
         except Exception as exc:  # pragma: no cover
             raise ProviderError("Failed to initialize OCR provider.") from exc
