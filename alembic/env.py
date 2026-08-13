@@ -9,6 +9,13 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from app.core.config import settings
 from app.core.database import Base
 
+# Import model modules so their tables register on Base.metadata for autogenerate.
+# Backend B appends its own model modules here via a small PR.
+from app.modules.users import models as _users_models  # noqa: E402,F401
+from app.modules.auth import models as _auth_models  # noqa: E402,F401
+from app.modules.guests import models as _guests_models  # noqa: E402,F401
+from app.modules.stores import models as _stores_models  # noqa: E402,F401
+
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)
 

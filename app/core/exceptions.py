@@ -53,6 +53,18 @@ class UnauthorizedError(AppException):
     message = "인증이 필요합니다."
 
 
+class TokenExpiredError(AppException):
+    status_code = status.HTTP_401_UNAUTHORIZED
+    code = ErrorCode.TOKEN_EXPIRED
+    message = "토큰이 만료되었습니다."
+
+
+class GuestSessionExpiredError(AppException):
+    status_code = status.HTTP_401_UNAUTHORIZED
+    code = ErrorCode.GUEST_SESSION_EXPIRED
+    message = "게스트 세션이 만료되었습니다."
+
+
 class ForbiddenError(AppException):
     status_code = status.HTTP_403_FORBIDDEN
     code = ErrorCode.FORBIDDEN
