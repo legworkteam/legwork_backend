@@ -12,6 +12,7 @@ from app.core.database import AsyncSessionLocal, Base, engine
 from app.main import create_app
 from app.modules.avatars import models as avatar_models  # noqa: F401
 from app.modules.auth import models as auth_models  # noqa: F401
+from app.modules.coordis import models as coordi_models  # noqa: F401
 from app.modules.files import models as file_models  # noqa: F401
 from app.modules.guests import models as guest_models  # noqa: F401
 from app.modules.jobs import models as job_models  # noqa: F401
@@ -43,6 +44,8 @@ async def reset_state(test_file_root: Path) -> None:
     async with AsyncSessionLocal() as session:
         await session.execute(text('DELETE FROM "refreshToken"'))
         await session.execute(text('DELETE FROM "tryOn"'))
+        await session.execute(text('DELETE FROM "savedCoordiItem"'))
+        await session.execute(text('DELETE FROM "savedCoordi"'))
         await session.execute(text('DELETE FROM avatar'))
         await session.execute(text('DELETE FROM "productImage"'))
         await session.execute(text('DELETE FROM "productTag"'))
@@ -65,6 +68,8 @@ async def reset_state(test_file_root: Path) -> None:
     async with AsyncSessionLocal() as session:
         await session.execute(text('DELETE FROM "refreshToken"'))
         await session.execute(text('DELETE FROM "tryOn"'))
+        await session.execute(text('DELETE FROM "savedCoordiItem"'))
+        await session.execute(text('DELETE FROM "savedCoordi"'))
         await session.execute(text('DELETE FROM avatar'))
         await session.execute(text('DELETE FROM "productImage"'))
         await session.execute(text('DELETE FROM "productTag"'))

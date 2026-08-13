@@ -32,6 +32,23 @@ class ProductRepository:
             select(Product).where(Product.id == product_id, Product.active.is_(True))
         )
 
+    async def list_active_products(
+        self,
+        *,
+        exclude_product_id: uuid.UUID,
+        limit: int = 50,
+    ) -> list[Product]:
+        result = await self.session.scalars(
+            select(Product)
+            .where(
+                Product.active.is_(True),
+                Product.id != exclude_product_id,
+            )
+            .order_by(Product.name.asc(), Product.id.asc())
+            .limit(limit)
+        )
+        return list(result)
+
     async def list_images(self, product_id: uuid.UUID) -> list[ProductImage]:
         result = await self.session.scalars(
             select(ProductImage)

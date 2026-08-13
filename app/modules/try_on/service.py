@@ -12,6 +12,8 @@ from app.core.config import settings
 from app.core.enums import FileOwnerType, Gender, JobType, TryOnProviderKind, TryOnScope
 from app.core.exceptions import ForbiddenError, GenerationFailedError, GuestLimitExceededError, NotFoundError, ValidationError
 from app.modules.avatars.repository import AvatarRepository
+from app.modules.coordis.repository import SavedCoordiRepository
+from app.modules.coordis.service import SavedCoordiService
 from app.modules.files.repository import FileRepository
 from app.modules.files.service import FileService
 from app.modules.guests.repository import GuestRepository
@@ -21,7 +23,7 @@ from app.modules.products.service import ProductService
 from app.modules.try_on.models import TryOn
 from app.modules.try_on.repository import TryOnRepository
 from app.modules.try_on.schemas import AvatarTryOnRequest, PhotoTryOnRequest, TryOnJobAcceptedResponse, TryOnSchema
-from app.providers.try_on.base import TryOnAvatarParameters, TryOnProvider, TryOnProviderRequest
+from app.providers.try_on.base import TryOnAvatarParameters, TryOnCoordiItem, TryOnProvider, TryOnProviderRequest
 from app.storage.base import StorageService
 from app.storage.validators import IMAGE_RULE, validate_file_upload
 from app.tasks.job_utils import run_job_with_new_session
@@ -70,6 +72,7 @@ class TryOnService:
         guest_repository: GuestRepository | None = None,
         avatar_repository: AvatarRepository | None = None,
         file_repository: FileRepository | None = None,
+        saved_coordi_repository: SavedCoordiRepository | None = None,
     ) -> None:
         self.session = session
         self.product_service = product_service
@@ -79,6 +82,7 @@ class TryOnService:
         self.guests = guest_repository or GuestRepository(session)
         self.avatars = avatar_repository or AvatarRepository(session)
         self.files = file_repository or FileRepository(session)
+        self.saved_coordis = saved_coordi_repository or SavedCoordiRepository(session)
         self.file_service = FileService(session, repository=self.files, storage=storage)
         self.jobs = JobService(session)
 
@@ -95,6 +99,8 @@ class TryOnService:
             saved_coordi_id=payload.saved_coordi_id,
             variant_id=payload.variant_id,
         )
+        if payload.scope is TryOnScope.FULL_COORDI and principal.user_id is None:
+            raise ForbiddenError("Only members can use saved coordi try-on.")
         job = await self.jobs.create_job(principal=principal, job_type=JobType.AVATAR_TRY_ON)
         background_tasks.add_task(
             run_job_with_new_session,
@@ -121,6 +127,8 @@ class TryOnService:
             saved_coordi_id=payload.saved_coordi_id,
             variant_id=payload.variant_id,
         )
+        if payload.scope is TryOnScope.FULL_COORDI and principal.user_id is None:
+            raise ForbiddenError("Only members can use saved coordi try-on.")
         owner = TryOnOwner.from_principal(principal)
 
         guest = None
@@ -281,6 +289,7 @@ class TryOnService:
             product_service=ProductService(ProductRepository(session)),
             provider=self.provider,
             storage=self.storage,
+            saved_coordi_repository=SavedCoordiRepository(session),
         )
 
     async def _build_provider_request(
@@ -298,6 +307,7 @@ class TryOnService:
         simulate_failure: bool,
     ) -> TryOnProviderRequest:
         product = None
+        coordi_items: list[TryOnCoordiItem] = []
         if scope is TryOnScope.PRODUCT_ONLY:
             if product_id is None:
                 raise ValidationError("productId is required for productOnly scope.")
@@ -306,11 +316,21 @@ class TryOnService:
                 variants = await self.product_service.get_available_variants(product_id)
                 if not any(item.variant_id == variant_id for item in variants):
                     raise NotFoundError("Variant not found.")
-        elif saved_coordi_id is not None:
-            raise ValidationError(
-                "fullCoordi try-on is not implemented yet.",
-                details={"field": "savedCoordiId", "todo": "SavedCoordi is out of scope in this PR."},
+        else:
+            if saved_coordi_id is None:
+                raise ValidationError("savedCoordiId is required for fullCoordi scope.")
+            coordi_service = SavedCoordiService(self.saved_coordis, product_service=self.product_service)
+            item_details = await coordi_service.get_owned_items_for_try_on(
+                saved_coordi_id=saved_coordi_id,
+                user_id=principal.user_id,
             )
+            coordi_items = [
+                TryOnCoordiItem(
+                    product=await self.product_service.get_product(item.product_id),
+                    variant=item.variant,
+                )
+                for item in item_details
+            ]
 
         avatar = await self._resolve_avatar_parameters(
             principal=principal,
@@ -323,6 +343,7 @@ class TryOnService:
             avatar=avatar,
             product=product,
             variant_id=variant_id,
+            coordi_items=coordi_items,
             source_image_path=source_image_path,
             simulate_failure=simulate_failure,
         )

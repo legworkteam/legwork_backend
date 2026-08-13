@@ -42,6 +42,10 @@ class MockTryOnProvider(TryOnProvider):
             lines.append(f"product: {payload.product.product_code}")
         if payload.variant_id is not None:
             lines.append(f"variant: {payload.variant_id}")
+        if payload.coordi_items:
+            lines.append(f"coordi items: {len(payload.coordi_items)}")
+            for item in payload.coordi_items[:2]:
+                lines.append(f"- {item.product.product_code}")
         if payload.source_image_path:
             lines.append("source: uploaded photo")
         else:
