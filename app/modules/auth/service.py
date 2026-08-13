@@ -25,11 +25,20 @@ from app.modules.auth.schemas import (
     RefreshRequest,
     SignupRequest,
     SignupResponse,
+    SocialLoginRequest,
     TokenResponse,
 )
 from app.modules.users.models import User
 from app.modules.users.repository import UserRepository
+from app.providers.social.base import SocialProvider
+from app.providers.social.google import GoogleSocialProvider
+from app.providers.social.kakao import KakaoSocialProvider
 from app.utils.datetime import now_kst
+
+_SOCIAL_PROVIDERS: dict[AuthProvider, SocialProvider] = {
+    AuthProvider.GOOGLE: GoogleSocialProvider(),
+    AuthProvider.KAKAO: KakaoSocialProvider(),
+}
 
 MAX_LOGIN_FAILURES = 5
 LOCK_DURATION = timedelta(minutes=15)
@@ -94,6 +103,29 @@ class AuthService:
         # success: reset counters, issue tokens
         user.login_fail_count = 0
         user.locked_until = None
+        return await self._issue_tokens(user)
+
+    async def social_login(self, payload: SocialLoginRequest) -> TokenResponse:
+        provider_enum = AuthProvider(payload.provider)  # "google" | "kakao"
+        provider = _SOCIAL_PROVIDERS[provider_enum]
+        profile = await provider.fetch_profile(
+            payload.authorization_code, payload.redirect_uri
+        )
+
+        # Identity is (provider, providerUserId): same email under a different
+        # provider is a separate account, never auto-merged.
+        user = await self.users.get_by_provider_identity(
+            provider_enum, profile.provider_user_id
+        )
+        if user is None:
+            user = User(
+                name=profile.name,
+                email=profile.email,
+                auth_provider=provider_enum,
+                provider_user_id=profile.provider_user_id,
+                password_hash=None,
+            )
+            await self.users.add(user)
         return await self._issue_tokens(user)
 
     async def refresh(self, payload: RefreshRequest) -> TokenResponse:

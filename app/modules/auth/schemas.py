@@ -5,7 +5,8 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-_PASSWORD_RE = re.compile(r"^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$")
+from app.core.security import password_meets_policy
+
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -28,7 +29,7 @@ class SignupRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password(cls, value: str) -> str:
-        if not _PASSWORD_RE.match(value):
+        if not password_meets_policy(value):
             raise ValueError(
                 "비밀번호는 8자 이상이며 대문자/숫자/특수문자를 포함해야 합니다."
             )
@@ -63,6 +64,22 @@ class TokenResponse(BaseModel):
     refresh_token_expires_in: int = Field(alias="refreshTokenExpiresIn")
 
 
+class SocialLoginRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    provider: str
+    authorization_code: str = Field(alias="authorizationCode", min_length=1)
+    redirect_uri: str | None = Field(default=None, alias="redirectUri")
+
+    @field_validator("provider")
+    @classmethod
+    def validate_provider(cls, value: str) -> str:
+        value = value.strip().lower()
+        if value not in {"google", "kakao"}:
+            raise ValueError("provider는 google 또는 kakao여야 합니다.")
+        return value
+
+
 class RefreshRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
@@ -73,3 +90,15 @@ class LogoutRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     refresh_token: str = Field(alias="refreshToken")
+
+
+class ClaimRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    guest_token: str = Field(alias="guestToken")
+
+
+class ClaimResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    recent_products_claimed: int = Field(alias="recentProductsClaimed")

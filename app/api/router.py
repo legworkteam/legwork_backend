@@ -6,11 +6,16 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.core.config import settings
 from app.core.responses import ApiResponse, success_response
 from app.modules.auth.router import router as auth_router
+from app.modules.cart.router import router as cart_router
 from app.modules.files.router import router as files_router
 from app.modules.guests.router import router as guests_router
 from app.modules.jobs.router import router as jobs_router
 from app.modules.ocr.router import router as ocr_router
+from app.modules.orders.router import router as orders_router
+from app.modules.owned_products.router import router as owned_products_router
 from app.modules.products.router import router as products_router
+from app.modules.stores.router import router as stores_router
+from app.modules.users.router import router as users_router
 from app.utils.datetime import now_kst
 
 
@@ -18,7 +23,12 @@ api_router = APIRouter()
 # Backend A (Core & Commerce)
 api_router.include_router(auth_router)
 api_router.include_router(guests_router)
+api_router.include_router(users_router)
 api_router.include_router(products_router)
+api_router.include_router(cart_router)
+api_router.include_router(orders_router)
+api_router.include_router(owned_products_router)
+api_router.include_router(stores_router)
 
 
 class HealthResponse(BaseModel):

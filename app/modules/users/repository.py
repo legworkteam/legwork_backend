@@ -27,6 +27,17 @@ class UserRepository:
             select(User).where(User.id == user_id, User.deleted_at.is_(None))
         )
 
+    async def get_by_provider_identity(
+        self, auth_provider: AuthProvider, provider_user_id: str
+    ) -> User | None:
+        return await self.session.scalar(
+            select(User).where(
+                User.auth_provider == auth_provider,
+                User.provider_user_id == provider_user_id,
+                User.deleted_at.is_(None),
+            )
+        )
+
     async def add(self, user: User) -> User:
         self.session.add(user)
         await self.session.flush()

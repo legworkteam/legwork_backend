@@ -5,6 +5,7 @@ OCR) consume these schemas rather than importing A's ORM models.
 """
 
 import uuid
+from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -62,3 +63,17 @@ class ProductDetail(BaseModel):
     images: list[ProductImageInfo] = Field(default_factory=list)
     tags: list[ProductTagInfo] = Field(default_factory=list)
     variants: list[VariantInfo] = Field(default_factory=list)
+
+
+class RecentProductItem(BaseModel):
+    """A recently viewed product (summary + when it was last viewed)."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    product_id: uuid.UUID = Field(alias="productId")
+    product_code: str = Field(alias="productCode")
+    name: str
+    thumbnail_file_id: uuid.UUID | None = Field(default=None, alias="thumbnailFileId")
+    base_price: int = Field(alias="basePrice")
+    currency: str
+    viewed_at: datetime = Field(alias="viewedAt")

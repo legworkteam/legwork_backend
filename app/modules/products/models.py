@@ -7,8 +7,22 @@ carries style/color/season values used by recommendations.
 """
 
 import uuid
+from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, ForeignKey, Index, Integer, String, Text, Uuid
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    Uuid,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base, TimestampMixin, UUIDMixin
@@ -67,3 +81,48 @@ class ProductTag(UUIDMixin, Base):
     )
     tag_type: Mapped[str] = mapped_column("tagType", String(40), nullable=False)
     tag_value: Mapped[str] = mapped_column("tagValue", String(80), nullable=False)
+
+
+class RecentProduct(UUIDMixin, Base):
+    """Recently scanned/viewed product, owned by exactly one of user/guest.
+
+    Re-viewing the same product updates viewedAt instead of adding a row.
+    """
+
+    __tablename__ = "recentProduct"
+    __table_args__ = (
+        CheckConstraint(
+            '("userId" IS NOT NULL) <> ("guestSessionId" IS NOT NULL)',
+            name="ck_recentProduct_one_owner",
+        ),
+        Index("ix_recentProduct_userId_viewedAt", "userId", "viewedAt"),
+        Index("ix_recentProduct_guestSessionId_viewedAt", "guestSessionId", "viewedAt"),
+    )
+
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        "userId", ForeignKey("user.id", ondelete="CASCADE"), nullable=True
+    )
+    guest_session_id: Mapped[uuid.UUID | None] = mapped_column(
+        "guestSessionId", ForeignKey("guestSession.id", ondelete="CASCADE"), nullable=True
+    )
+    product_id: Mapped[uuid.UUID] = mapped_column(
+        "productId", ForeignKey("product.id", ondelete="CASCADE"), nullable=False
+    )
+    viewed_at: Mapped[datetime] = mapped_column(
+        "viewedAt", DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ProductCareGuide(UUIDMixin, TimestampMixin, Base):
+    """Per-product care guide. Falls back to a category default in the service
+    layer when a product has no specific guide."""
+
+    __tablename__ = "productCareGuide"
+    __table_args__ = (Index("ix_productCareGuide_productId", "productId"),)
+
+    product_id: Mapped[uuid.UUID] = mapped_column(
+        "productId", ForeignKey("product.id", ondelete="CASCADE"), nullable=False
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    guide_json: Mapped[dict] = mapped_column("guideJson", JSONB, nullable=False)
+    as_info_json: Mapped[dict | None] = mapped_column("asInfoJson", JSONB, nullable=True)

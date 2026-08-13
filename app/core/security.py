@@ -10,6 +10,7 @@ them to domain exceptions (UNAUTHORIZED / TOKEN_EXPIRED).
 """
 
 import hashlib
+import re
 import secrets
 from datetime import datetime, timedelta
 from typing import Any, Literal
@@ -23,6 +24,13 @@ from app.utils.datetime import now_kst
 ALGORITHM = "HS256"
 
 TokenType = Literal["access", "guest"]
+
+# At least 8 chars, one uppercase, one digit, one special character.
+_PASSWORD_RE = re.compile(r"^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$")
+
+
+def password_meets_policy(raw_password: str) -> bool:
+    return bool(_PASSWORD_RE.match(raw_password))
 
 
 # --- Password (bcrypt) -------------------------------------------------------
