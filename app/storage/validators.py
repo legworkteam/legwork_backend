@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from app.core.exceptions import ErrorCode, ValidationError
+from app.core.exceptions import ErrorCode, FileTooLargeError, UnsupportedFileTypeError
 
 
 IMAGE_MAX_BYTES = 20 * 1024 * 1024
@@ -69,26 +69,26 @@ def validate_file_upload(
 ) -> None:
     extension = Path(filename).suffix.lower()
     if extension not in rule.allowed_extensions:
-        raise ValidationError(
+        raise UnsupportedFileTypeError(
             "Unsupported file extension.",
             details={"field": "filename", "code": ErrorCode.UNSUPPORTED_FILE_TYPE},
         )
 
     expected_content_types = EXTENSION_TO_CONTENT_TYPES.get(extension, set())
     if content_type not in rule.allowed_content_types or content_type not in expected_content_types:
-        raise ValidationError(
+        raise UnsupportedFileTypeError(
             "Unsupported content type.",
             details={"field": "contentType", "code": ErrorCode.UNSUPPORTED_FILE_TYPE},
         )
 
     if len(content) > rule.max_bytes:
-        raise ValidationError(
+        raise FileTooLargeError(
             "File size exceeds the allowed limit.",
             details={"field": "file", "code": ErrorCode.FILE_TOO_LARGE, "maxBytes": rule.max_bytes},
         )
 
     if not _matches_signature(extension, content_type, content):
-        raise ValidationError(
+        raise UnsupportedFileTypeError(
             "File signature does not match the declared file type.",
             details={"field": "file", "code": ErrorCode.UNSUPPORTED_FILE_TYPE},
         )

@@ -87,7 +87,27 @@ class ConflictError(AppException):
 class ProviderError(AppException):
     status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     code = ErrorCode.AI_UNAVAILABLE
-    message = "외부 Provider를 사용할 수 없습니다."
+    message = "AI Provider를 사용할 수 없습니다."
+
+
+class ProductCodeNotDetectedError(ValidationError):
+    code = "PRODUCT_CODE_NOT_DETECTED"
+    message = "제품 품번 후보를 인식하지 못했습니다."
+
+
+class ProductCodeAmbiguousError(ValidationError):
+    code = "PRODUCT_CODE_AMBIGUOUS"
+    message = "여러 품번 후보가 감지되어 하나로 확정할 수 없습니다."
+
+
+class FileTooLargeError(ValidationError):
+    code = ErrorCode.FILE_TOO_LARGE
+    message = "파일 크기가 허용 범위를 초과했습니다."
+
+
+class UnsupportedFileTypeError(ValidationError):
+    code = ErrorCode.UNSUPPORTED_FILE_TYPE
+    message = "지원하지 않는 파일 형식입니다."
 
 
 def register_exception_handlers(app: FastAPI) -> None:

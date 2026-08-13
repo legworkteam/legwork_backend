@@ -9,6 +9,7 @@ from app.modules.auth.router import router as auth_router
 from app.modules.files.router import router as files_router
 from app.modules.guests.router import router as guests_router
 from app.modules.jobs.router import router as jobs_router
+from app.modules.ocr.router import router as ocr_router
 from app.modules.products.router import router as products_router
 from app.utils.datetime import now_kst
 
@@ -42,5 +43,6 @@ async def health_check(request: Request) -> ApiResponse[HealthResponse]:
 
 
 # Backend B (Experience & AI)
+api_router.include_router(ocr_router)
 api_router.include_router(jobs_router)
 api_router.include_router(files_router)
