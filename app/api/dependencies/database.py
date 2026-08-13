@@ -1,10 +1,21 @@
+"""Request-scoped DB session dependency.
+
+Owns the transaction boundary: commits on a clean request, rolls back on any
+exception. Services/repositories use flush(); the commit happens here.
+"""
+
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_async_session
+from app.core.database import AsyncSessionLocal
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
-    async for session in get_async_session():
-        yield session
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
