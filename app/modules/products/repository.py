@@ -146,6 +146,19 @@ class RecentProductRepository:
         )
         await self.session.flush()
 
+    async def list_for_guest(
+        self, guest_session_id: uuid.UUID
+    ) -> list[RecentProduct]:
+        result = await self.session.scalars(
+            select(RecentProduct).where(
+                RecentProduct.guest_session_id == guest_session_id
+            )
+        )
+        return list(result)
+
+    async def delete(self, row: RecentProduct) -> None:
+        await self.session.delete(row)
+
     async def list_recent(
         self,
         *,

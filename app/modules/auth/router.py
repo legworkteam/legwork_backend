@@ -8,8 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies.auth import CurrentUser
 from app.api.dependencies.database import get_db_session
 from app.core.responses import ApiResponse, success_response
+from app.modules.auth.claim_service import ClaimService
 from app.modules.auth.repository import RefreshTokenRepository
 from app.modules.auth.schemas import (
+    ClaimRequest,
+    ClaimResponse,
     LoginRequest,
     LogoutRequest,
     RefreshRequest,
@@ -18,6 +21,7 @@ from app.modules.auth.schemas import (
     TokenResponse,
 )
 from app.modules.auth.service import AuthService
+from app.modules.products.repository import RecentProductRepository
 from app.modules.users.repository import UserRepository
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -29,7 +33,12 @@ def get_auth_service(session: DbSession) -> AuthService:
     return AuthService(UserRepository(session), RefreshTokenRepository(session))
 
 
+def get_claim_service(session: DbSession) -> ClaimService:
+    return ClaimService(RecentProductRepository(session))
+
+
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
+ClaimServiceDep = Annotated[ClaimService, Depends(get_claim_service)]
 
 
 @router.post(
@@ -82,3 +91,18 @@ async def logout(
 ) -> ApiResponse[None]:
     await service.logout(payload.refresh_token)
     return success_response(data=None, request=request)
+
+
+@router.post(
+    "/claim",
+    response_model=ApiResponse[ClaimResponse],
+    summary="Claim guest data into the logged-in member",
+)
+async def claim(
+    request: Request,
+    payload: ClaimRequest,
+    user: CurrentUser,
+    service: ClaimServiceDep,
+) -> ApiResponse[ClaimResponse]:
+    data = await service.claim(user.id, payload.guest_token)
+    return success_response(data=data, request=request)

@@ -74,3 +74,15 @@ class LogoutRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     refresh_token: str = Field(alias="refreshToken")
+
+
+class ClaimRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    guest_token: str = Field(alias="guestToken")
+
+
+class ClaimResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    recent_products_claimed: int = Field(alias="recentProductsClaimed")
