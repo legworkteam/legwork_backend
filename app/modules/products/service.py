@@ -88,6 +88,18 @@ class ProductService:
         variants = await self.repository.list_variants(product_id, active_only=True)
         return [_to_variant_info(v) for v in variants]
 
+    async def list_recommendation_candidates(
+        self,
+        *,
+        exclude_product_id: uuid.UUID,
+        limit: int = 50,
+    ) -> list[ProductDetail]:
+        products = await self.repository.list_active_products(
+            exclude_product_id=exclude_product_id,
+            limit=limit,
+        )
+        return [await self._to_detail(product) for product in products]
+
     @staticmethod
     def _to_summary(
         product: Product, thumbnail_file_id: uuid.UUID | None
@@ -99,6 +111,28 @@ class ProductService:
             thumbnailFileId=thumbnail_file_id,
             basePrice=product.base_price,
             currency=product.currency,
+        )
+
+    async def _to_detail(self, product: Product) -> ProductDetail:
+        images = await self.repository.list_images(product.id)
+        tags = await self.repository.list_tags(product.id)
+        variants = await self.repository.list_variants(product.id, active_only=True)
+
+        return ProductDetail(
+            productId=product.id,
+            productCode=product.product_code,
+            name=product.name,
+            description=product.description,
+            category=product.category,
+            basePrice=product.base_price,
+            currency=product.currency,
+            thumbnailFileId=_thumbnail_file_id(images),
+            images=[
+                ProductImageInfo(fileId=i.file_id, type=i.type, sortOrder=i.sort_order)
+                for i in images
+            ],
+            tags=[ProductTagInfo(tagType=t.tag_type, tagValue=t.tag_value) for t in tags],
+            variants=[_to_variant_info(v) for v in variants],
         )
 
 

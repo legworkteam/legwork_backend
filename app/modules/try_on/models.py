@@ -40,7 +40,7 @@ class TryOn(Base):
         nullable=False,
     )
     product_id: Mapped[UUID | None] = mapped_column("productId", ForeignKey("product.id"), nullable=True)
-    saved_coordi_id: Mapped[UUID | None] = mapped_column("savedCoordiId", nullable=True)
+    saved_coordi_id: Mapped[UUID | None] = mapped_column("savedCoordiId", ForeignKey("savedCoordi.id"), nullable=True)
     result_file_id: Mapped[UUID] = mapped_column("resultFileId", nullable=False)
     provider: Mapped[TryOnProviderKind] = mapped_column(
         Enum(TryOnProviderKind, name="try_on_provider", values_callable=_enum_values),
