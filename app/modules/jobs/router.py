@@ -3,8 +3,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.dependencies.auth import CurrentPrincipal, Principal
 from app.api.dependencies.database import get_db_session
-from app.api.dependencies.ownership import Principal, get_guest_or_member_principal
 from app.core.responses import ApiResponse, success_response
 from app.modules.jobs.schemas import JobSchema
 from app.modules.jobs.service import JobService
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/jobs", tags=["jobs"])
 async def get_job(
     jobId: UUID,
     request: Request,
-    principal: Principal = Depends(get_guest_or_member_principal),
+    principal: CurrentPrincipal,
     session: AsyncSession = Depends(get_db_session),
 ) -> ApiResponse[JobSchema]:
     service = JobService(session)

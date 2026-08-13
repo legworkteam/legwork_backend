@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.dependencies.auth import CurrentPrincipal, Principal
 from app.api.dependencies.database import get_db_session
-from app.api.dependencies.ownership import Principal, get_guest_or_member_principal
 from app.modules.files.service import FileService
 
 
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/files", tags=["files"])
 )
 async def get_file(
     fileId: UUID,
-    principal: Principal = Depends(get_guest_or_member_principal),
+    principal: CurrentPrincipal,
     session: AsyncSession = Depends(get_db_session),
 ) -> StreamingResponse:
     service = FileService(session)

@@ -25,6 +25,9 @@ class GuestRepository:
     async def get_campaign(self, campaign_id: uuid.UUID) -> Campaign | None:
         return await self.session.get(Campaign, campaign_id)
 
+    async def get_by_id(self, guest_session_id: uuid.UUID) -> GuestSession | None:
+        return await self.session.get(GuestSession, guest_session_id)
+
     async def create_session(
         self,
         *,

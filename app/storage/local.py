@@ -17,6 +17,9 @@ class LocalStorageService(StorageService):
         candidate.relative_to(self.file_root)
         return candidate
 
+    def resolve_path(self, relative_path: str) -> Path:
+        return self._resolve(relative_path)
+
     async def save(self, *, relative_path: str, content: bytes) -> StorageWriteResult:
         destination = self._resolve(relative_path)
         await anyio.to_thread.run_sync(lambda: destination.parent.mkdir(parents=True, exist_ok=True))

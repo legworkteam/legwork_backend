@@ -1,9 +1,10 @@
+from datetime import timedelta
 from uuid import uuid4
 
 import pytest
 
-from app.api.dependencies.ownership import Principal
-from app.core.enums import JobStatus, JobType, PrincipalType
+from app.api.dependencies.auth import Principal
+from app.core.enums import JobStatus, JobType
 from app.modules.jobs.service import JobService
 
 
@@ -13,7 +14,7 @@ async def test_job_creation_sets_owner_and_expiry(db_session) -> None:
     service = JobService(db_session)
 
     created = await service.create_job(
-        principal=Principal(type=PrincipalType.USER, owner_id=owner_id),
+        principal=Principal(kind="member", user_id=owner_id),
         job_type=JobType.PHOTO_TRY_ON,
     )
 
@@ -28,7 +29,7 @@ async def test_job_status_transition_updates_result(db_session) -> None:
     owner_id = uuid4()
     service = JobService(db_session)
     created = await service.create_job(
-        principal=Principal(type=PrincipalType.GUEST, owner_id=owner_id),
+        principal=Principal(kind="guest", guest_session_id=owner_id),
         job_type=JobType.DIAGNOSIS,
     )
 
