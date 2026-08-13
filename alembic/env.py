@@ -18,6 +18,7 @@ from app.modules.auth import models as _auth_models  # noqa: E402,F401
 from app.modules.guests import models as _guests_models  # noqa: E402,F401
 from app.modules.stores import models as _stores_models  # noqa: E402,F401
 from app.modules.products import models as _products_models  # noqa: E402,F401
+from app.modules.cart import models as _cart_models  # noqa: E402,F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)

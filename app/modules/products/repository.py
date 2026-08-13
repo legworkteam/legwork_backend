@@ -45,6 +45,29 @@ class ProductRepository:
         )
         return list(result)
 
+    async def get_variant_by_id(self, variant_id: uuid.UUID) -> ProductVariant | None:
+        return await self.session.get(ProductVariant, variant_id)
+
+    async def get_products_by_ids(
+        self, product_ids: list[uuid.UUID]
+    ) -> dict[uuid.UUID, Product]:
+        if not product_ids:
+            return {}
+        rows = await self.session.scalars(
+            select(Product).where(Product.id.in_(product_ids))
+        )
+        return {p.id: p for p in rows}
+
+    async def get_variants_by_ids(
+        self, variant_ids: list[uuid.UUID]
+    ) -> dict[uuid.UUID, ProductVariant]:
+        if not variant_ids:
+            return {}
+        rows = await self.session.scalars(
+            select(ProductVariant).where(ProductVariant.id.in_(variant_ids))
+        )
+        return {v.id: v for v in rows}
+
     async def list_variants(
         self, product_id: uuid.UUID, *, active_only: bool = True
     ) -> list[ProductVariant]:
