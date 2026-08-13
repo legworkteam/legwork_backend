@@ -15,3 +15,8 @@ class StoreRepository:
             select(Store).where(Store.active.is_(True)).order_by(Store.name).limit(limit)
         )
         return list(result)
+
+    async def get_active_by_id(self, store_id) -> Store | None:
+        return await self.session.scalar(
+            select(Store).where(Store.id == store_id, Store.active.is_(True))
+        )

@@ -134,6 +134,16 @@ class GenerationFailedError(AppException):
     message = "Try-on generation failed."
 
 
+class RepairNotNeededError(ValidationError):
+    code = "REPAIR_NOT_NEEDED"
+    message = "Repair is not required for this diagnosis."
+
+
+class ReservationSlotUnavailableError(ConflictError):
+    code = "REPAIR_SLOT_UNAVAILABLE"
+    message = "The selected repair slot is unavailable."
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppException)
     async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
