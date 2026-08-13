@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.core.config import settings
 from app.core.database import Base
+from app.modules.files import models as file_models  # noqa: F401
+from app.modules.jobs import models as job_models  # noqa: F401
 
 # Import model modules so their tables register on Base.metadata for autogenerate.
 # Backend B appends its own model modules here via a small PR.

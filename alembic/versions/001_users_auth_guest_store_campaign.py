@@ -1,7 +1,7 @@
 """users_auth_guest_store_campaign
 
 Revision ID: 871a50acc488
-Revises: 
+Revises: 202608130001
 Create Date: 2026-08-14 01:16:38.518660
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '871a50acc488'
-down_revision: Union[str, None] = None
+down_revision: Union[str, None] = '202608130001'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
