@@ -6,9 +6,9 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies.ownership import Principal, ensure_file_access
-from app.core.enums import FileOwnerType, FileVisibility, PrincipalType
-from app.core.exceptions import NotFoundError
+from app.api.dependencies.auth import Principal
+from app.core.enums import FileOwnerType, FileVisibility
+from app.core.exceptions import ForbiddenError, NotFoundError
 from app.modules.files.models import FileMetadata
 from app.modules.files.repository import FileRepository
 from app.modules.files.schemas import FileMetadataSchema
@@ -77,17 +77,19 @@ class FileService:
         metadata = await self.repository.get_by_id(file_id)
         if metadata is None:
             raise NotFoundError("File not found.")
+        if metadata.owner_id is None:
+            raise ForbiddenError("Owner is not assigned to this file.")
 
-        ensure_file_access(
-            principal,
-            owner_type=metadata.owner_type.value,
-            owner_id=metadata.owner_id,
-        )
+        if principal.kind == "member":
+            if metadata.owner_type is not FileOwnerType.USER or metadata.owner_id != principal.user_id:
+                raise ForbiddenError("You do not own this file.")
+        else:
+            if metadata.owner_type is not FileOwnerType.GUEST or metadata.owner_id != principal.guest_session_id:
+                raise ForbiddenError("You do not own this file.")
+
         content = await self.storage.open(relative_path=metadata.path)
         return StoredPrivateFile(metadata=metadata, content=content)
 
     @staticmethod
     def owner_type_for_principal(principal: Principal) -> FileOwnerType:
-        if principal.type is PrincipalType.USER:
-            return FileOwnerType.USER
-        return FileOwnerType.GUEST
+        return FileOwnerType.USER if principal.kind == "member" else FileOwnerType.GUEST

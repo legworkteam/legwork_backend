@@ -2,8 +2,8 @@ from uuid import uuid4
 
 import pytest
 
-from app.api.dependencies.ownership import Principal
-from app.core.enums import FileOwnerType, PrincipalType
+from app.api.dependencies.auth import Principal
+from app.core.enums import FileOwnerType
 from app.modules.files.service import FileService
 
 
@@ -41,7 +41,7 @@ async def test_private_file_owner_can_read_saved_content(db_session) -> None:
 
     stored = await service.get_owned_file(
         file_id=created.id,
-        principal=Principal(type=PrincipalType.GUEST, owner_id=owner_id),
+        principal=Principal(kind="guest", guest_session_id=owner_id),
     )
 
     assert stored.content == b"\x89PNG\r\n\x1a\ncontent"

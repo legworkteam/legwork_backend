@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from uuid import UUID
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.database import AsyncSessionLocal
 from app.core.enums import JobStatus
 from app.core.exceptions import AppException, ErrorCode
@@ -12,13 +14,13 @@ from app.modules.jobs.service import JobService
 async def run_job_with_new_session(
     *,
     job_id: UUID,
-    runner: Callable[[JobService], Awaitable[dict | None]],
+    runner: Callable[[AsyncSession, JobService, UUID], Awaitable[dict | None]],
 ) -> None:
     async with AsyncSessionLocal() as session:
         service = JobService(session)
         try:
             await service.update_status(job_id=job_id, status=JobStatus.PROCESSING, progress=1)
-            result = await runner(service)
+            result = await runner(session, service, job_id)
             await service.update_status(
                 job_id=job_id,
                 status=JobStatus.SUCCEEDED,

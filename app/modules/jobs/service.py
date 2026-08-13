@@ -5,10 +5,10 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies.ownership import Principal, ensure_job_access
+from app.api.dependencies.auth import Principal
 from app.core.config import settings
-from app.core.enums import JobStatus, JobType, PrincipalType
-from app.core.exceptions import NotFoundError, ValidationError
+from app.core.enums import JobStatus, JobType
+from app.core.exceptions import ForbiddenError, NotFoundError, ValidationError
 from app.modules.jobs.models import Job
 from app.modules.jobs.repository import JobRepository
 from app.modules.jobs.schemas import JobSchema
@@ -33,8 +33,8 @@ class JobService:
         self._validate_progress(progress)
         created_at = now_kst()
         job = Job(
-            user_id=principal.owner_id if principal.type is PrincipalType.USER else None,
-            guest_session_id=principal.owner_id if principal.type is PrincipalType.GUEST else None,
+            user_id=principal.user_id,
+            guest_session_id=principal.guest_session_id,
             type=job_type,
             status=status,
             progress=progress,
@@ -52,7 +52,12 @@ class JobService:
         job = await self.repository.get_by_id(job_id)
         if job is None:
             raise NotFoundError("Job not found.")
-        ensure_job_access(principal, user_id=job.user_id, guest_session_id=job.guest_session_id)
+        if principal.kind == "member":
+            if job.user_id != principal.user_id:
+                raise ForbiddenError("You do not own this job.")
+        else:
+            if job.guest_session_id != principal.guest_session_id:
+                raise ForbiddenError("You do not own this job.")
         return JobSchema.model_validate(job)
 
     async def update_status(
