@@ -9,6 +9,7 @@ from app.modules.avatars.router import router as avatars_router
 from app.modules.auth.router import router as auth_router
 from app.modules.cart.router import router as cart_router
 from app.modules.coordis.router import router as coordis_router
+from app.modules.diagnoses.router import router as diagnoses_router
 from app.modules.files.router import router as files_router
 from app.modules.guests.router import router as guests_router
 from app.modules.jobs.router import router as jobs_router
@@ -17,6 +18,7 @@ from app.modules.orders.router import router as orders_router
 from app.modules.owned_products.router import router as owned_products_router
 from app.modules.products.router import router as products_router
 from app.modules.recommendations.router import router as recommendations_router
+from app.modules.repairs.router import router as repairs_router
 from app.modules.stores.router import router as stores_router
 from app.modules.try_on.router import router as try_on_router
 from app.modules.users.router import router as users_router
@@ -64,3 +66,5 @@ api_router.include_router(avatars_router)
 api_router.include_router(try_on_router)
 api_router.include_router(recommendations_router)
 api_router.include_router(coordis_router)
+api_router.include_router(diagnoses_router)
+api_router.include_router(repairs_router)

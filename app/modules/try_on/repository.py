@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import delete, select
@@ -36,3 +37,13 @@ class TryOnRepository:
         await self.session.execute(
             delete(TryOn).where(TryOn.guest_session_id == guest_session_id, TryOn.expires_at.is_not(None))
         )
+
+    async def list_expired_unsaved(self, *, now: datetime) -> list[TryOn]:
+        result = await self.session.scalars(
+            select(TryOn).where(
+                TryOn.saved_at.is_(None),
+                TryOn.expires_at.is_not(None),
+                TryOn.expires_at <= now,
+            )
+        )
+        return list(result.all())

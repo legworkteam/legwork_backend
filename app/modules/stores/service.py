@@ -7,6 +7,7 @@ from business hours so the frontend can render availability.
 
 from datetime import date, datetime, time
 
+from app.core.exceptions import NotFoundError
 from app.modules.stores.repository import StoreRepository
 from app.modules.stores.schemas import StoreItem, StoreListResponse
 from app.utils.datetime import KST, now_kst
@@ -43,3 +44,8 @@ class StoreService:
                 for s in stores
             ]
         )
+
+    async def ensure_active_store(self, store_id) -> None:
+        store = await self.repository.get_active_by_id(store_id)
+        if store is None:
+            raise NotFoundError("Store not found.")

@@ -86,3 +86,19 @@ class TryOnScope(StrEnum):
 
 class TryOnProviderKind(StrEnum):
     MOCK = "mock"
+
+
+class DiagnosisProviderKind(StrEnum):
+    MOCK = "mock"
+
+
+class DamageSeverity(StrEnum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class RepairReservationStatus(StrEnum):
+    CONFIRMED = "confirmed"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"

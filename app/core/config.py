@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     guest_photo_limit: int = Field(default=3, alias="GUEST_PHOTO_LIMIT")
     tryon_source_ttl_minutes: int = Field(default=60, alias="TRYON_SOURCE_TTL_MINUTES")
     tryon_result_ttl_minutes: int = Field(default=180, alias="TRYON_RESULT_TTL_MINUTES")
+    diagnosis_source_ttl_hours: int = Field(default=24, alias="DIAGNOSIS_SOURCE_TTL_HOURS")
     job_ttl_hours: int = Field(default=24, alias="JOB_TTL_HOURS")
 
     google_client_id: str = Field(default="", alias="GOOGLE_CLIENT_ID")
