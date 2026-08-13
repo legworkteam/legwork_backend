@@ -5,6 +5,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.config import settings
 from app.core.responses import ApiResponse, success_response
+from app.modules.files.router import router as files_router
+from app.modules.jobs.router import router as jobs_router
 from app.utils.datetime import now_kst
 
 
@@ -30,3 +32,7 @@ async def health_check(request: Request) -> ApiResponse[HealthResponse]:
         data=HealthResponse(status="ok", appEnv=settings.app_env, checkedAt=now_kst()),
         request=request,
     )
+
+
+api_router.include_router(jobs_router)
+api_router.include_router(files_router)
