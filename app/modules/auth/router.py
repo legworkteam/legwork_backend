@@ -18,6 +18,7 @@ from app.modules.auth.schemas import (
     RefreshRequest,
     SignupRequest,
     SignupResponse,
+    SocialLoginRequest,
     TokenResponse,
 )
 from app.modules.auth.service import AuthService
@@ -63,6 +64,18 @@ async def login(
     request: Request, payload: LoginRequest, service: AuthServiceDep
 ) -> ApiResponse[TokenResponse]:
     data = await service.login(payload)
+    return success_response(data=data, request=request)
+
+
+@router.post(
+    "/social",
+    response_model=ApiResponse[TokenResponse],
+    summary="Log in with Google/Kakao",
+)
+async def social_login(
+    request: Request, payload: SocialLoginRequest, service: AuthServiceDep
+) -> ApiResponse[TokenResponse]:
+    data = await service.social_login(payload)
     return success_response(data=data, request=request)
 
 

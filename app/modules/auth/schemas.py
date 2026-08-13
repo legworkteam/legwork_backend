@@ -64,6 +64,22 @@ class TokenResponse(BaseModel):
     refresh_token_expires_in: int = Field(alias="refreshTokenExpiresIn")
 
 
+class SocialLoginRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    provider: str
+    authorization_code: str = Field(alias="authorizationCode", min_length=1)
+    redirect_uri: str | None = Field(default=None, alias="redirectUri")
+
+    @field_validator("provider")
+    @classmethod
+    def validate_provider(cls, value: str) -> str:
+        value = value.strip().lower()
+        if value not in {"google", "kakao"}:
+            raise ValueError("provider는 google 또는 kakao여야 합니다.")
+        return value
+
+
 class RefreshRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
