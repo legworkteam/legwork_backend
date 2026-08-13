@@ -5,7 +5,8 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-_PASSWORD_RE = re.compile(r"^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$")
+from app.core.security import password_meets_policy
+
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -28,7 +29,7 @@ class SignupRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password(cls, value: str) -> str:
-        if not _PASSWORD_RE.match(value):
+        if not password_meets_policy(value):
             raise ValueError(
                 "비밀번호는 8자 이상이며 대문자/숫자/특수문자를 포함해야 합니다."
             )
