@@ -1,24 +1,30 @@
 """Demo seed data for Atelier Lens (Backend A domains).
 
 Idempotent: safe to run multiple times — existing rows (by unique key) are
-reused, not duplicated. Run with:
+reused, not duplicated. Also self-healing: if a product's ProductImage points
+to a fileId with no matching FileMetadata (e.g. from an older seed run before
+public product images existed), it backfills a real file. Run with:
 
     .venv/Scripts/python.exe -m scripts.seed
 
 Creates stores, a campaign + QR opaque code, and a demo product catalog
 (products / variants / tags / images / care guides). Product codes use a
-DEMO- prefix until real MCM 품번 data is available. ProductImage.fileId values
-are placeholder UUIDs (Backend B owns real FileMetadata).
+DEMO- prefix until real MCM 품번 data is available. Product thumbnails are
+real generated placeholder PNGs stored as public FileMetadata (fetchable via
+GET /files/{fileId} without auth-owner checks).
 """
 
 import asyncio
 import uuid
 
+import cv2
+import numpy as np
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal
-from app.core.enums import RegisteredProductSource  # noqa: F401  (ensures enums import)
+from app.core.enums import FileOwnerType, FileVisibility, RegisteredProductSource  # noqa: F401
+from app.modules.files.models import FileMetadata
 from app.modules.products.models import (
     Product,
     ProductCareGuide,
@@ -27,6 +33,8 @@ from app.modules.products.models import (
     ProductVariant,
 )
 from app.modules.stores.models import Campaign, QrCodeMapping, Store
+from app.storage.local import LocalStorageService
+from app.storage.paths import build_private_upload_path
 
 # --- catalog definition ------------------------------------------------------
 # Each product: code, name, category, basePrice, tags {style,color,season},
@@ -110,6 +118,61 @@ CATALOG: list[dict] = [
 ]
 
 
+def _placeholder_png(*, code: str, name: str, category: str) -> bytes:
+    """Small generated placeholder product image (demo-only, real photos come later)."""
+    canvas = np.full((480, 480, 3), 238, dtype=np.uint8)
+    cv2.rectangle(canvas, (16, 16), (464, 464), (200, 190, 175), 3)
+    cv2.putText(canvas, "ATELIER LENS", (36, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (90, 80, 70), 2, cv2.LINE_AA)
+    cv2.putText(canvas, category.upper(), (36, 230), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (60, 60, 60), 2, cv2.LINE_AA)
+    cv2.putText(canvas, name, (36, 270), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (40, 40, 40), 1, cv2.LINE_AA)
+    cv2.putText(canvas, code, (36, 440), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (120, 110, 100), 1, cv2.LINE_AA)
+    ok, encoded = cv2.imencode(".png", canvas)
+    if not ok:
+        raise RuntimeError("Failed to encode placeholder product image.")
+    return encoded.tobytes()
+
+
+async def _ensure_product_thumbnail(
+    session: AsyncSession, storage: LocalStorageService, product: Product
+) -> None:
+    """Create (or backfill) a real public FileMetadata-backed thumbnail."""
+    image = await session.scalar(
+        select(ProductImage)
+        .where(ProductImage.product_id == product.id)
+        .order_by(ProductImage.sort_order.asc(), ProductImage.id.asc())
+    )
+    if image is not None:
+        backing = await session.scalar(
+            select(FileMetadata).where(FileMetadata.id == image.file_id)
+        )
+        if backing is not None:
+            return  # already has a real file behind it
+
+    file_id = uuid.uuid4()
+    filename = f"{product.product_code}.png"
+    relative_path = build_private_upload_path(
+        owner_type=FileOwnerType.PRODUCT, owner_id=product.id, file_id=file_id, filename=filename
+    )
+    content = _placeholder_png(code=product.product_code, name=product.name, category=product.category or "")
+    write_result = await storage.save(relative_path=relative_path, content=content)
+    session.add(
+        FileMetadata(
+            id=file_id,
+            owner_type=FileOwnerType.PRODUCT,
+            owner_id=product.id,
+            path=write_result.relative_path,
+            original_name=filename,
+            content_type="image/png",
+            size=write_result.size,
+            visibility=FileVisibility.PUBLIC,
+        )
+    )
+    if image is None:
+        session.add(ProductImage(product_id=product.id, file_id=file_id, type="thumbnail", sort_order=0))
+    else:
+        image.file_id = file_id
+
+
 async def _get_or_create_store(session: AsyncSession, name: str, address: str) -> Store:
     store = await session.scalar(select(Store).where(Store.name == name))
     if store is None:
@@ -141,7 +204,7 @@ async def _get_or_create_qr(
     return qr
 
 
-async def _seed_product(session: AsyncSession, spec: dict) -> bool:
+async def _seed_product(session: AsyncSession, storage: LocalStorageService, spec: dict) -> bool:
     """Upsert a product with variants/tags/image/care-guide. Returns True if new."""
     product = await session.scalar(
         select(Product).where(Product.product_code == spec["code"])
@@ -209,17 +272,7 @@ async def _seed_product(session: AsyncSession, spec: dict) -> bool:
                 ProductTag(product_id=product.id, tag_type=tag_type, tag_value=tag_value)
             )
 
-    existing_image = await session.scalar(
-        select(ProductImage)
-        .where(ProductImage.product_id == product.id)
-        .order_by(ProductImage.sort_order.asc(), ProductImage.id.asc())
-    )
-    if existing_image is None:
-        session.add(
-            ProductImage(
-                product_id=product.id, file_id=uuid.uuid4(), type="thumbnail", sort_order=0
-            )
-        )
+    await _ensure_product_thumbnail(session, storage, product)
 
     care = spec.get("care")
     if care:
@@ -243,6 +296,7 @@ async def _seed_product(session: AsyncSession, spec: dict) -> bool:
 
 
 async def seed() -> None:
+    storage = LocalStorageService()
     async with AsyncSessionLocal() as session:
         flagship = await _get_or_create_store(session, "MCM 플래그십", "서울시 강남구")
         popup = await _get_or_create_store(session, "Atelier Lens 팝업", "서울시 성수동")
@@ -252,7 +306,7 @@ async def seed() -> None:
 
         created = 0
         for spec in CATALOG:
-            if await _seed_product(session, spec):
+            if await _seed_product(session, storage, spec):
                 created += 1
 
         await session.commit()
