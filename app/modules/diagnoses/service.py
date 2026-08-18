@@ -30,7 +30,7 @@ from app.utils.datetime import now_kst
 
 class DiagnosisNotFoundError(NotFoundError):
     code = "DIAGNOSIS_NOT_FOUND"
-    message = "Diagnosis not found."
+    message = "진단 결과를 찾을 수 없습니다."
 
 
 class DiagnosisService:
@@ -112,9 +112,9 @@ class DiagnosisService:
         registered_product = await self.owned_products.get_product(user_id, registered_product_id)
         source_file = await self.files.get_by_id(source_file_id)
         if source_file is None:
-            raise NotFoundError("Diagnosis source image not found.")
+            raise NotFoundError("진단용 원본 이미지를 찾을 수 없습니다.")
         if not hasattr(self.storage, "resolve_path"):
-            raise GenerationFailedError("Storage path resolution is unavailable.")
+            raise GenerationFailedError("저장소 경로를 확인할 수 없습니다.")
 
         provider_result = await self.provider.diagnose(
             DiagnosisProviderRequest(

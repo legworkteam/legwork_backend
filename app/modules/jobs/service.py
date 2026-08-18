@@ -51,13 +51,13 @@ class JobService:
     async def get_owned_job(self, *, job_id: UUID, principal: Principal) -> JobSchema:
         job = await self.repository.get_by_id(job_id)
         if job is None:
-            raise NotFoundError("Job not found.")
+            raise NotFoundError("Job을 찾을 수 없습니다.")
         if principal.kind == "member":
             if job.user_id != principal.user_id:
-                raise ForbiddenError("You do not own this job.")
+                raise ForbiddenError("이 Job에 대한 접근 권한이 없습니다.")
         else:
             if job.guest_session_id != principal.guest_session_id:
-                raise ForbiddenError("You do not own this job.")
+                raise ForbiddenError("이 Job에 대한 접근 권한이 없습니다.")
         return JobSchema.model_validate(job)
 
     async def update_status(
@@ -71,7 +71,7 @@ class JobService:
     ) -> JobSchema:
         job = await self.repository.get_by_id(job_id)
         if job is None:
-            raise NotFoundError("Job not found.")
+            raise NotFoundError("Job을 찾을 수 없습니다.")
 
         if progress is not None:
             self._validate_progress(progress)

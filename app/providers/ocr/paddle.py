@@ -49,7 +49,7 @@ def preprocess_secondary_image(image_path: str) -> np.ndarray:
 def _load_image(image_path: str) -> np.ndarray:
     image = cv2.imread(image_path, cv2.IMREAD_COLOR)
     if image is None:
-        raise ProviderError("OCR input image could not be loaded.")
+        raise ProviderError("OCR 입력 이미지를 불러오지 못했습니다.")
     return image
 
 
@@ -75,7 +75,7 @@ def _resize_for_ocr(image: np.ndarray) -> np.ndarray:
 class PaddleOcrProvider(OcrProvider):
     def __init__(self) -> None:
         if PaddleOCR is None:  # pragma: no cover
-            raise ProviderError("PaddleOCR is not installed.")
+            raise ProviderError("PaddleOCR가 설치되어 있지 않습니다.")
 
         os.environ.setdefault("FLAGS_enable_pir_api", "0")
         os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
@@ -89,7 +89,7 @@ class PaddleOcrProvider(OcrProvider):
                 enable_mkldnn=False,
             )
         except Exception as exc:  # pragma: no cover
-            raise ProviderError("Failed to initialize OCR provider.") from exc
+            raise ProviderError("OCR Provider 초기화에 실패했습니다.") from exc
 
     async def recognize(
         self,
@@ -105,7 +105,7 @@ class PaddleOcrProvider(OcrProvider):
         try:
             raw_output = list(self._ocr.predict(preprocessed_path))
         except Exception as exc:
-            raise ProviderError("OCR recognition failed.") from exc
+            raise ProviderError("OCR 인식에 실패했습니다.") from exc
         finally:
             Path(preprocessed_path).unlink(missing_ok=True)
 
@@ -129,7 +129,7 @@ class PaddleOcrProvider(OcrProvider):
         path = Path(image_path)
         output_path = path.with_name(f"{path.stem}-{variant.value}-{uuid4().hex}.png")
         if not cv2.imwrite(str(output_path), processed):
-            raise ProviderError("Failed to write OCR preprocessing output.")
+            raise ProviderError("OCR 전처리 결과 저장에 실패했습니다.")
         return str(output_path)
 
 

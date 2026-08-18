@@ -27,7 +27,7 @@ MAX_COORDI_LIMIT = 50
 
 class SavedCoordiNotFoundError(NotFoundError):
     code = "SAVED_COORDI_NOT_FOUND"
-    message = "Saved coordi not found."
+    message = "저장된 코디를 찾을 수 없습니다."
 
 
 class SavedCoordiService:
@@ -278,4 +278,4 @@ class SavedCoordiService:
             created_at_raw, row_id_raw = raw.split("|", 1)
             return datetime.fromisoformat(created_at_raw), uuid.UUID(row_id_raw)
         except Exception as exc:
-            raise ValidationError("Invalid cursor.") from exc
+            raise ValidationError("유효하지 않은 cursor입니다.") from exc

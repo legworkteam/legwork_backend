@@ -118,7 +118,7 @@ class FileService:
     async def get_owned_file(self, *, file_id: UUID, principal: Principal) -> StoredPrivateFile:
         metadata = await self.repository.get_by_id(file_id)
         if metadata is None:
-            raise NotFoundError("File not found.")
+            raise NotFoundError("파일을 찾을 수 없습니다.")
 
         # Public files (e.g. product images) are fetchable by any principal;
         # visibility governs access here, not ownership.
@@ -127,14 +127,14 @@ class FileService:
             return StoredPrivateFile(metadata=metadata, content=content)
 
         if metadata.owner_id is None:
-            raise ForbiddenError("Owner is not assigned to this file.")
+            raise ForbiddenError("이 파일에 소유자가 지정되어 있지 않습니다.")
 
         if principal.kind == "member":
             if metadata.owner_type is not FileOwnerType.USER or metadata.owner_id != principal.user_id:
-                raise ForbiddenError("You do not own this file.")
+                raise ForbiddenError("이 파일에 대한 접근 권한이 없습니다.")
         else:
             if metadata.owner_type is not FileOwnerType.GUEST or metadata.owner_id != principal.guest_session_id:
-                raise ForbiddenError("You do not own this file.")
+                raise ForbiddenError("이 파일에 대한 접근 권한이 없습니다.")
 
         content = await self.storage.open(relative_path=metadata.path)
         return StoredPrivateFile(metadata=metadata, content=content)

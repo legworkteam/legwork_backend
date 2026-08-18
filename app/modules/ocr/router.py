@@ -31,7 +31,7 @@ def get_ocr_provider() -> OcrProvider:
     except ProviderError:
         raise
     except Exception as exc:  # pragma: no cover
-        raise ProviderError("OCR provider is unavailable.") from exc
+        raise ProviderError("OCR Provider를 사용할 수 없습니다.") from exc
 
 
 @lru_cache

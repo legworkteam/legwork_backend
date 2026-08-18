@@ -85,7 +85,7 @@ async def update_guest_avatar_parameters(
     service: AvatarServiceDep,
 ) -> ApiResponse[GuestAvatarParametersSchema]:
     if principal.guest_session_id is None:
-        raise ForbiddenError("Guest session is required.")
+        raise ForbiddenError("게스트 세션이 필요합니다.")
     data = await service.update_guest_avatar_parameters(
         guest_session_id=principal.guest_session_id,
         payload=payload,

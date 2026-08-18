@@ -31,15 +31,15 @@ class MockDiagnosisProvider(DiagnosisProvider):
 
     def _diagnose_sync(self, payload: DiagnosisProviderRequest) -> DiagnosisProviderResult:
         if payload.simulate_failure:
-            raise ProviderError("Mock diagnosis provider failure.")
+            raise ProviderError("Mock 진단 Provider 실패입니다.")
 
         source = Path(payload.source_image_path)
         if not source.exists():
-            raise InvalidImageError("Diagnosis source image not found.")
+            raise InvalidImageError("진단용 원본 이미지를 찾을 수 없습니다.")
 
         content = source.read_bytes()
         if not content:
-            raise InvalidImageError("Diagnosis source image is empty.")
+            raise InvalidImageError("진단용 원본 이미지가 비어 있습니다.")
 
         digest = hashlib.sha256(
             content + str(payload.registered_product.registration_id).encode("utf-8")

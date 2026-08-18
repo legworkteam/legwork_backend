@@ -16,7 +16,7 @@ from app.utils.datetime import now_kst
 
 class RepairReservationNotFoundError(NotFoundError):
     code = "REPAIR_RESERVATION_NOT_FOUND"
-    message = "Repair reservation not found."
+    message = "수리 예약을 찾을 수 없습니다."
 
 
 class RepairReservationService:
@@ -44,7 +44,7 @@ class RepairReservationService:
             user_id=user_id,
         )
         if diagnosis is None:
-            raise NotFoundError("Diagnosis not found.")
+            raise NotFoundError("진단 결과를 찾을 수 없습니다.")
         if not diagnosis.repair_needed:
             raise RepairNotNeededError()
         await self.stores.ensure_active_store(payload.store_id)
@@ -110,7 +110,7 @@ class RepairReservationService:
         if row is None:
             raise RepairReservationNotFoundError()
         if row.status is not RepairReservationStatus.CONFIRMED:
-            raise ValidationError("Only confirmed reservations can be cancelled.")
+            raise ValidationError("확정된 예약만 취소할 수 있습니다.")
 
         row.status = RepairReservationStatus.CANCELLED
         row.cancelled_at = now_kst()

@@ -32,7 +32,7 @@ class ErrorCode:
 class AppException(Exception):
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
     code = ErrorCode.INTERNAL_ERROR
-    message = "Server error."
+    message = "서버 오류가 발생했습니다."
 
     def __init__(
         self,
@@ -47,101 +47,101 @@ class AppException(Exception):
 class ValidationError(AppException):
     status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
     code = ErrorCode.VALIDATION_ERROR
-    message = "Validation failed."
+    message = "입력값을 확인해주세요."
 
 
 class UnauthorizedError(AppException):
     status_code = status.HTTP_401_UNAUTHORIZED
     code = ErrorCode.UNAUTHORIZED
-    message = "Authentication required."
+    message = "인증이 필요합니다."
 
 
 class TokenExpiredError(AppException):
     status_code = status.HTTP_401_UNAUTHORIZED
     code = ErrorCode.TOKEN_EXPIRED
-    message = "Token expired."
+    message = "토큰이 만료되었습니다."
 
 
 class GuestSessionExpiredError(AppException):
     status_code = status.HTTP_401_UNAUTHORIZED
     code = ErrorCode.GUEST_SESSION_EXPIRED
-    message = "Guest session expired."
+    message = "게스트 세션이 만료되었습니다."
 
 
 class ForbiddenError(AppException):
     status_code = status.HTTP_403_FORBIDDEN
     code = ErrorCode.FORBIDDEN
-    message = "Forbidden."
+    message = "접근 권한이 없습니다."
 
 
 class NotFoundError(AppException):
     status_code = status.HTTP_404_NOT_FOUND
     code = ErrorCode.NOT_FOUND
-    message = "Resource not found."
+    message = "리소스를 찾을 수 없습니다."
 
 
 class ConflictError(AppException):
     status_code = status.HTTP_409_CONFLICT
     code = ErrorCode.CONFLICT
-    message = "Conflict."
+    message = "요청이 현재 상태와 충돌합니다."
 
 
 class ProviderError(AppException):
     status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     code = ErrorCode.AI_UNAVAILABLE
-    message = "AI provider is unavailable."
+    message = "AI Provider를 사용할 수 없습니다."
 
 
 class ProductCodeNotDetectedError(ValidationError):
     code = "PRODUCT_CODE_NOT_DETECTED"
-    message = "Product code not detected."
+    message = "품번을 인식하지 못했습니다."
 
 
 class ProductCodeAmbiguousError(ValidationError):
     code = "PRODUCT_CODE_AMBIGUOUS"
-    message = "Multiple product-code candidates matched."
+    message = "품번 후보가 여러 개 일치합니다."
 
 
 class FileTooLargeError(ValidationError):
     code = ErrorCode.FILE_TOO_LARGE
-    message = "File is too large."
+    message = "파일 용량이 너무 큽니다."
 
 
 class UnsupportedFileTypeError(ValidationError):
     code = ErrorCode.UNSUPPORTED_FILE_TYPE
-    message = "Unsupported file type."
+    message = "지원하지 않는 파일 형식입니다."
 
 
 class GuestLimitExceededError(AppException):
     status_code = status.HTTP_429_TOO_MANY_REQUESTS
     code = ErrorCode.GUEST_LIMIT_EXCEEDED
-    message = "Guest try-on limit exceeded."
+    message = "게스트 체험 가능 횟수를 초과했습니다."
 
 
 class InvalidImageError(ValidationError):
     code = ErrorCode.INVALID_IMAGE
-    message = "Invalid image."
+    message = "유효하지 않은 이미지입니다."
 
 
 class PersonNotDetectedError(ValidationError):
     code = ErrorCode.PERSON_NOT_DETECTED
-    message = "Person not detected."
+    message = "사진에서 인물을 인식하지 못했습니다."
 
 
 class GenerationFailedError(AppException):
     status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     code = ErrorCode.GENERATION_FAILED
-    message = "Try-on generation failed."
+    message = "가상 피팅 생성에 실패했습니다."
 
 
 class RepairNotNeededError(ValidationError):
     code = "REPAIR_NOT_NEEDED"
-    message = "Repair is not required for this diagnosis."
+    message = "이 진단 결과는 수리가 필요하지 않습니다."
 
 
 class ReservationSlotUnavailableError(ConflictError):
     code = "REPAIR_SLOT_UNAVAILABLE"
-    message = "The selected repair slot is unavailable."
+    message = "선택한 수리 예약 슬롯을 사용할 수 없습니다."
 
 
 def register_exception_handlers(app: FastAPI) -> None:
@@ -166,7 +166,7 @@ def register_exception_handlers(app: FastAPI) -> None:
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             content=error_response(
                 code=ErrorCode.VALIDATION_ERROR,
-                message="Validation failed.",
+                message="입력값을 확인해주세요.",
                 details={"errors": jsonable_encoder(exc.errors())},
                 request=request,
             ),
@@ -179,7 +179,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     ) -> JSONResponse:
         code = ErrorCode.NOT_FOUND if exc.status_code == status.HTTP_404_NOT_FOUND else ErrorCode.INTERNAL_ERROR
         message = (
-            "Resource not found."
+            "리소스를 찾을 수 없습니다."
             if exc.status_code == status.HTTP_404_NOT_FOUND
             else HTTPStatus(exc.status_code).phrase
         )
@@ -198,7 +198,7 @@ def register_exception_handlers(app: FastAPI) -> None:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=error_response(
                 code=ErrorCode.INTERNAL_ERROR,
-                message="Server error.",
+                message="서버 오류가 발생했습니다.",
                 request=request,
             ),
         )

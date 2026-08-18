@@ -48,4 +48,4 @@ class StoreService:
     async def ensure_active_store(self, store_id) -> None:
         store = await self.repository.get_active_by_id(store_id)
         if store is None:
-            raise NotFoundError("Store not found.")
+            raise NotFoundError("매장을 찾을 수 없습니다.")

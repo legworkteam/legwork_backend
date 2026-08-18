@@ -39,7 +39,7 @@ DEFAULT_AVATAR = TryOnAvatarParameters(
 
 class TryOnNotFoundError(NotFoundError):
     code = "TRY_ON_NOT_FOUND"
-    message = "Try-on result not found."
+    message = "Try-on 결과를 찾을 수 없습니다."
 
 
 @dataclass(frozen=True)
@@ -100,7 +100,7 @@ class TryOnService:
             variant_id=payload.variant_id,
         )
         if payload.scope is TryOnScope.FULL_COORDI and principal.user_id is None:
-            raise ForbiddenError("Only members can use saved coordi try-on.")
+            raise ForbiddenError("회원만 저장된 코디로 착용해볼 수 있습니다.")
         job = await self.jobs.create_job(principal=principal, job_type=JobType.AVATAR_TRY_ON)
         background_tasks.add_task(
             run_job_with_new_session,
@@ -128,14 +128,14 @@ class TryOnService:
             variant_id=payload.variant_id,
         )
         if payload.scope is TryOnScope.FULL_COORDI and principal.user_id is None:
-            raise ForbiddenError("Only members can use saved coordi try-on.")
+            raise ForbiddenError("회원만 저장된 코디로 착용해볼 수 있습니다.")
         owner = TryOnOwner.from_principal(principal)
 
         guest = None
         if principal.guest_session_id is not None:
             guest = await self.guests.get_by_id(principal.guest_session_id)
             if guest is None:
-                raise NotFoundError("Guest session not found.")
+                raise NotFoundError("게스트 세션을 찾을 수 없습니다.")
             if guest.photo_try_on_count >= settings.guest_photo_limit:
                 raise GuestLimitExceededError()
 
@@ -180,19 +180,19 @@ class TryOnService:
 
     async def save_try_on(self, *, try_on_id: uuid.UUID, principal: Principal) -> TryOnSchema:
         if principal.user_id is None:
-            raise ForbiddenError("Only members can save try-on results.")
+            raise ForbiddenError("회원만 착용 결과를 저장할 수 있습니다.")
 
         row = await self.try_ons.get_by_id(try_on_id)
         if row is None:
             raise TryOnNotFoundError()
         if row.user_id != principal.user_id:
-            raise ForbiddenError("You do not own this try-on result.")
+            raise ForbiddenError("이 착용 결과에 대한 접근 권한이 없습니다.")
 
         file_metadata = await self.files.get_by_id(row.result_file_id)
         if file_metadata is None:
-            raise NotFoundError("Result file not found.")
+            raise NotFoundError("결과 파일을 찾을 수 없습니다.")
         if file_metadata.owner_type is not FileOwnerType.USER or file_metadata.owner_id != principal.user_id:
-            raise ForbiddenError("You do not own this result file.")
+            raise ForbiddenError("이 결과 파일에 대한 접근 권한이 없습니다.")
 
         row.saved_at = now_kst()
         row.expires_at = None
@@ -203,13 +203,13 @@ class TryOnService:
 
     async def delete_saved_try_on(self, *, try_on_id: uuid.UUID, principal: Principal) -> None:
         if principal.user_id is None:
-            raise ForbiddenError("Only members can delete saved try-on results.")
+            raise ForbiddenError("회원만 저장된 착용 결과를 삭제할 수 있습니다.")
 
         row = await self.try_ons.get_by_id(try_on_id)
         if row is None:
             raise TryOnNotFoundError()
         if row.user_id != principal.user_id or row.saved_at is None:
-            raise ForbiddenError("You do not own this saved try-on result.")
+            raise ForbiddenError("이 저장된 착용 결과에 대한 접근 권한이 없습니다.")
 
         file_metadata = await self.files.get_by_id(row.result_file_id)
         if file_metadata is not None:
@@ -233,9 +233,9 @@ class TryOnService:
             if source_file_id is not None:
                 source_file = await service.files.get_by_id(source_file_id)
                 if source_file is None:
-                    raise NotFoundError("Source photo not found.")
+                    raise NotFoundError("원본 사진을 찾을 수 없습니다.")
                 if not hasattr(service.storage, "resolve_path"):
-                    raise GenerationFailedError("Storage path resolution is unavailable.")
+                    raise GenerationFailedError("저장소 경로를 확인할 수 없습니다.")
                 source_path = str(service.storage.resolve_path(source_file.path))  # type: ignore[attr-defined]
 
             provider_request = await service._build_provider_request(
@@ -310,15 +310,15 @@ class TryOnService:
         coordi_items: list[TryOnCoordiItem] = []
         if scope is TryOnScope.PRODUCT_ONLY:
             if product_id is None:
-                raise ValidationError("productId is required for productOnly scope.")
+                raise ValidationError("productOnly 범위에서는 productId가 필요합니다.")
             product = await self.product_service.get_product(product_id)
             if variant_id is not None:
                 variants = await self.product_service.get_available_variants(product_id)
                 if not any(item.variant_id == variant_id for item in variants):
-                    raise NotFoundError("Variant not found.")
+                    raise NotFoundError("옵션(variant)을 찾을 수 없습니다.")
         else:
             if saved_coordi_id is None:
-                raise ValidationError("savedCoordiId is required for fullCoordi scope.")
+                raise ValidationError("fullCoordi 범위에서는 savedCoordiId가 필요합니다.")
             coordi_service = SavedCoordiService(self.saved_coordis, product_service=self.product_service)
             item_details = await coordi_service.get_owned_items_for_try_on(
                 saved_coordi_id=saved_coordi_id,
