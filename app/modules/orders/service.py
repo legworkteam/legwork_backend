@@ -11,12 +11,14 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.dependencies.pagination import decode_cursor, encode_cursor, normalize_limit
 from app.core.enums import (
     OrderStatus,
     PaymentStatus,
     RegisteredProductSource,
 )
 from app.core.exceptions import NotFoundError
+from app.core.responses import PaginationMeta
 from app.modules.cart.repository import CartRepository
 from app.modules.cart.service import InsufficientStockError, VariantUnavailableError
 from app.modules.orders.models import OrderItem, Payment
@@ -160,9 +162,20 @@ class OrderService:
             paidAt=order.paid_at,
         )
 
-    async def list_orders(self, user_id: uuid.UUID) -> list[OrderSummary]:
-        orders = await self.orders.list_orders_for_user(user_id)
-        return [
+    async def list_orders(
+        self, user_id: uuid.UUID, *, cursor: str | None = None, limit: int = 20
+    ) -> tuple[list[OrderSummary], PaginationMeta]:
+        normalized_limit = normalize_limit(limit)
+        cursor_created_at, cursor_id = decode_cursor(cursor)
+        orders = await self.orders.list_orders_for_user(
+            user_id,
+            limit=normalized_limit + 1,
+            cursor_created_at=cursor_created_at,
+            cursor_id=cursor_id,
+        )
+        has_next = len(orders) > normalized_limit
+        page = orders[:normalized_limit]
+        items = [
             OrderSummary(
                 orderId=o.id,
                 orderStatus=o.status,
@@ -171,8 +184,13 @@ class OrderService:
                 paidAt=o.paid_at,
                 createdAt=o.created_at,
             )
-            for o in orders
+            for o in page
         ]
+        next_cursor = None
+        if has_next and page:
+            last = page[-1]
+            next_cursor = encode_cursor(last.created_at, last.id)
+        return items, PaginationMeta(nextCursor=next_cursor, hasNext=has_next, limit=normalized_limit)
 
     async def get_order(self, user_id: uuid.UUID, order_id: uuid.UUID) -> OrderDetail:
         order = await self.orders.get_order_for_user(order_id, user_id)

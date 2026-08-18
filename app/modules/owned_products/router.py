@@ -3,7 +3,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import CurrentUser
@@ -55,10 +55,14 @@ async def register_product(
     summary="List my products (purchased + registered)",
 )
 async def list_products(
-    request: Request, user: CurrentUser, service: OwnedServiceDep
+    request: Request,
+    user: CurrentUser,
+    service: OwnedServiceDep,
+    cursor: str | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=50),
 ) -> ApiResponse[list[RegisteredProductItem]]:
-    data = await service.list_products(user.id)
-    return success_response(data=data, request=request)
+    data, pagination = await service.list_products(user.id, cursor=cursor, limit=limit)
+    return success_response(data=data, request=request, pagination=pagination)
 
 
 @router.get(

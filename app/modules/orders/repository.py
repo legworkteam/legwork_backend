@@ -1,8 +1,9 @@
 """Persistence for orders, order items, and payments (Backend A)."""
 
 import uuid
+from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import OrderStatus
@@ -36,12 +37,24 @@ class OrderRepository:
         await self.session.flush()
         return payment
 
-    async def list_orders_for_user(self, user_id: uuid.UUID) -> list[Order]:
-        result = await self.session.scalars(
-            select(Order)
-            .where(Order.user_id == user_id, Order.deleted_at.is_(None))
-            .order_by(Order.created_at.desc())
-        )
+    async def list_orders_for_user(
+        self,
+        user_id: uuid.UUID,
+        *,
+        limit: int,
+        cursor_created_at: datetime | None = None,
+        cursor_id: uuid.UUID | None = None,
+    ) -> list[Order]:
+        stmt = select(Order).where(Order.user_id == user_id, Order.deleted_at.is_(None))
+        if cursor_created_at is not None and cursor_id is not None:
+            stmt = stmt.where(
+                or_(
+                    Order.created_at < cursor_created_at,
+                    and_(Order.created_at == cursor_created_at, Order.id < cursor_id),
+                )
+            )
+        stmt = stmt.order_by(Order.created_at.desc(), Order.id.desc()).limit(limit)
+        result = await self.session.scalars(stmt)
         return list(result)
 
     async def get_order_for_user(

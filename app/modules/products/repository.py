@@ -1,8 +1,9 @@
 """Persistence for the product catalog (Backend A)."""
 
 import uuid
+from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.products.models import (
@@ -182,10 +183,12 @@ class RecentProductRepository:
         user_id: uuid.UUID | None,
         guest_session_id: uuid.UUID | None,
         limit: int,
-    ) -> list[tuple[Product, object]]:
-        """Return (Product, viewedAt) rows, most-recent first, active products only."""
+        cursor_viewed_at: datetime | None = None,
+        cursor_id: uuid.UUID | None = None,
+    ) -> list[tuple[Product, datetime, uuid.UUID]]:
+        """Return (Product, viewedAt, recentProductId) rows, most-recent first, active products only."""
         stmt = (
-            select(Product, RecentProduct.viewed_at)
+            select(Product, RecentProduct.viewed_at, RecentProduct.id)
             .join(RecentProduct, RecentProduct.product_id == Product.id)
             .where(Product.active.is_(True))
         )
@@ -193,6 +196,16 @@ class RecentProductRepository:
             stmt = stmt.where(RecentProduct.user_id == user_id)
         else:
             stmt = stmt.where(RecentProduct.guest_session_id == guest_session_id)
-        stmt = stmt.order_by(RecentProduct.viewed_at.desc()).limit(limit)
+        if cursor_viewed_at is not None and cursor_id is not None:
+            stmt = stmt.where(
+                or_(
+                    RecentProduct.viewed_at < cursor_viewed_at,
+                    and_(
+                        RecentProduct.viewed_at == cursor_viewed_at,
+                        RecentProduct.id < cursor_id,
+                    ),
+                )
+            )
+        stmt = stmt.order_by(RecentProduct.viewed_at.desc(), RecentProduct.id.desc()).limit(limit)
         result = await self.session.execute(stmt)
-        return [(row[0], row[1]) for row in result.all()]
+        return [(row[0], row[1], row[2]) for row in result.all()]

@@ -7,7 +7,9 @@ registered automatically by the order flow (source=purchase).
 
 import uuid
 
+from app.api.dependencies.pagination import decode_cursor, encode_cursor, normalize_limit
 from app.core.exceptions import ConflictError, NotFoundError
+from app.core.responses import PaginationMeta
 from app.modules.owned_products.models import RegisteredProduct
 from app.modules.owned_products.repository import RegisteredProductRepository
 from app.modules.owned_products.schemas import (
@@ -94,18 +96,35 @@ class OwnedProductService:
         thumbs = await self.products.thumbnail_map([product.id])
         return self._to_item(row, product, thumbs.get(product.id))
 
-    async def list_products(self, user_id: uuid.UUID) -> list[RegisteredProductItem]:
-        rows = await self.repo.list_for_user(user_id)
-        product_ids = [r.product_id for r in rows]
+    async def list_products(
+        self, user_id: uuid.UUID, *, cursor: str | None = None, limit: int = 20
+    ) -> tuple[list[RegisteredProductItem], PaginationMeta]:
+        normalized_limit = normalize_limit(limit)
+        cursor_created_at, cursor_id = decode_cursor(cursor)
+        rows = await self.repo.list_for_user(
+            user_id,
+            limit=normalized_limit + 1,
+            cursor_created_at=cursor_created_at,
+            cursor_id=cursor_id,
+        )
+        has_next = len(rows) > normalized_limit
+        page = rows[:normalized_limit]
+
+        product_ids = [r.product_id for r in page]
         products = await self.products.get_products_by_ids(product_ids)
         thumbs = await self.products.thumbnail_map(product_ids)
         items: list[RegisteredProductItem] = []
-        for r in rows:
+        for r in page:
             product = products.get(r.product_id)
             if product is None:
                 continue
             items.append(self._to_item(r, product, thumbs.get(product.id)))
-        return items
+
+        next_cursor = None
+        if has_next and page:
+            last = page[-1]
+            next_cursor = encode_cursor(last.created_at, last.id)
+        return items, PaginationMeta(nextCursor=next_cursor, hasNext=has_next, limit=normalized_limit)
 
     async def get_product(
         self, user_id: uuid.UUID, registration_id: uuid.UUID
