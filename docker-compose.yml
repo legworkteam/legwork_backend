@@ -24,5 +24,32 @@ services:
       timeout: 5s
       retries: 10
 
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: atelier-lens-api
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    environment:
+      # Inside the compose network the DB is reachable by service name, not
+      # localhost -- override whatever DATABASE_URL is set to in .env.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      TZ: Asia/Seoul
+
+    ports:
+      - "8000:8000"
+
+    volumes:
+      - api_data:/data
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
+  api_data:

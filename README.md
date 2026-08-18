@@ -95,6 +95,31 @@ Seeded demo catalog uses `DEMO-*` product codes. These are demo identifiers, not
 - Swagger: `http://127.0.0.1:8000/docs`
 - OpenAPI: `http://127.0.0.1:8000/openapi.json`
 
+## Docker (Postgres + API together)
+
+For a production-like run instead of `## Start PostgreSQL` + local `uvicorn`:
+
+```powershell
+docker compose up -d --build
+docker compose ps
+curl http://localhost:8000/api/v1/health
+```
+
+Notes:
+
+- Requires `.env` (same as local dev). Inside the compose network the API reaches
+  Postgres by service name, so `docker-compose.yml` overrides `DATABASE_URL` to
+  `postgresql+asyncpg://$POSTGRES_USER:$POSTGRES_PASSWORD@postgres:5432/$POSTGRES_DB`
+  regardless of what `.env` has (`.env`'s value stays correct for local/non-Docker runs).
+- The `app` container runs `alembic upgrade head` on every start, then `uvicorn`.
+- First build is slow (multiple minutes, ~2.4GB image) — `paddleocr`/`paddlepaddle`
+  are heavy and unavoidable given the OCR feature.
+- `requirements.txt` (not `pyproject.toml`'s version ranges) is what the image
+  installs from, so it must stay in sync with the dev venv. Regenerate with
+  `pip freeze > requirements.txt` after changing dependencies, and check there's
+  no stray self-referencing `-e git+https://...#egg=atelier_lens_backend` line
+  (happens if it was generated from an editable install) before committing.
+
 ## Test
 
 ```powershell
