@@ -1,3 +1,4 @@
+import time
 from collections.abc import Awaitable, Callable
 from uuid import uuid4
 
@@ -7,6 +8,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
 from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
+from app.core.logging import configure_logging, get_logger
+
+configure_logging()
+_access_log = get_logger("access")
 
 
 def create_app() -> FastAPI:
@@ -33,8 +38,18 @@ def create_app() -> FastAPI:
     ) -> Response:
         request_id = request.headers.get("X-Request-ID") or f"req_{uuid4().hex}"
         request.state.request_id = request_id
+        started_at = time.perf_counter()
         response = await call_next(request)
+        duration_ms = (time.perf_counter() - started_at) * 1000
         response.headers["X-Request-ID"] = request_id
+        _access_log.info(
+            "%s %s -> %s (%.1fms) requestId=%s",
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration_ms,
+            request_id,
+        )
         return response
 
     register_exception_handlers(app)

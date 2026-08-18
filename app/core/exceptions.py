@@ -7,7 +7,10 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.core.logging import get_logger
 from app.core.responses import error_response
+
+_logger = get_logger("exceptions")
 
 
 class ErrorCode:
@@ -194,6 +197,14 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        request_id = getattr(request.state, "request_id", "req_unknown")
+        _logger.exception(
+            "Unhandled exception on %s %s (requestId=%s)",
+            request.method,
+            request.url.path,
+            request_id,
+            exc_info=exc,
+        )
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=error_response(
