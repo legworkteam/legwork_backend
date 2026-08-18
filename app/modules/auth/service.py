@@ -97,7 +97,11 @@ class AuthService:
             if user.login_fail_count >= MAX_LOGIN_FAILURES:
                 user.locked_until = now + LOCK_DURATION
                 user.login_fail_count = 0
+                # persist before raising: get_db_session rolls back on exception,
+                # which would otherwise silently discard the lockout state.
+                await self.users.session.commit()
                 raise LoginLockedError()
+            await self.users.session.commit()
             raise InvalidCredentialsError()
 
         # success: reset counters, issue tokens
