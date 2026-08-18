@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import CurrentPrincipal, CurrentUser, Principal
 from app.api.dependencies.database import get_db_session
+from app.core.config import settings
 from app.core.enums import Gender, TryOnScope
 from app.core.responses import ApiResponse, success_response
 from app.modules.products.router import ProductServiceDep
@@ -17,6 +18,7 @@ from app.modules.try_on.schemas import AvatarTryOnRequest, PhotoTryOnRequest, Tr
 from app.modules.try_on.service import TryOnService
 from app.providers.try_on.base import TryOnProvider
 from app.providers.try_on.mock import MockTryOnProvider
+from app.providers.try_on.openai_edit import OpenAITryOnProvider
 from app.storage.base import StorageService
 from app.storage.local import LocalStorageService
 
@@ -28,6 +30,8 @@ DbSession = Annotated[AsyncSession, Depends(get_db_session)]
 
 @lru_cache
 def get_try_on_provider() -> TryOnProvider:
+    if settings.try_on_provider == "openai":
+        return OpenAITryOnProvider()
     return MockTryOnProvider()
 
 

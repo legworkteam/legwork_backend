@@ -43,6 +43,14 @@ class Settings(BaseSettings):
     kakao_client_id: str = Field(default="", alias="KAKAO_CLIENT_ID")
     kakao_client_secret: str = Field(default="", alias="KAKAO_CLIENT_SECRET")
 
+    # try-on provider: "mock" (default) or "openai" (gpt-image-1 edit, real
+    # garment-transfer approximation for photo try-on; avatar try-on without a
+    # source photo still falls back to mock internally).
+    try_on_provider: str = Field(default="mock", alias="TRY_ON_PROVIDER")
+    openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
+    openai_image_model: str = Field(default="gpt-image-1.5", alias="OPENAI_IMAGE_MODEL")
+    openai_image_quality: str = Field(default="medium", alias="OPENAI_IMAGE_QUALITY")
+
     @property
     def cors_origins(self) -> list[str]:
         return [

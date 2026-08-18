@@ -19,6 +19,7 @@ from app.modules.files.service import FileService
 from app.modules.guests.repository import GuestRepository
 from app.modules.jobs.service import JobService
 from app.modules.products.repository import ProductRepository
+from app.modules.products.schemas import ProductDetail
 from app.modules.products.service import ProductService
 from app.modules.try_on.models import TryOn
 from app.modules.try_on.repository import TryOnRepository
@@ -338,6 +339,9 @@ class TryOnService:
             weight_kg=weight_kg,
             gender=gender,
         )
+        garment_image_paths = await self._resolve_garment_image_paths(
+            product=product, coordi_items=coordi_items
+        )
         return TryOnProviderRequest(
             scope=scope,
             avatar=avatar,
@@ -345,8 +349,37 @@ class TryOnService:
             variant_id=variant_id,
             coordi_items=coordi_items,
             source_image_path=source_image_path,
+            garment_image_paths=garment_image_paths,
             simulate_failure=simulate_failure,
         )
+
+    async def _resolve_garment_image_paths(
+        self,
+        *,
+        product: ProductDetail | None,
+        coordi_items: list[TryOnCoordiItem],
+    ) -> list[str]:
+        """Resolve product thumbnail(s) to absolute paths for providers that
+        need a real garment reference image (e.g. a hosted image-gen model).
+        Best-effort: products without a thumbnail are silently skipped rather
+        than failing the whole try-on request."""
+        if not hasattr(self.storage, "resolve_path"):
+            return []
+
+        file_ids: list[uuid.UUID] = []
+        if product is not None and product.thumbnail_file_id is not None:
+            file_ids.append(product.thumbnail_file_id)
+        for item in coordi_items[:5]:
+            if item.product.thumbnail_file_id is not None:
+                file_ids.append(item.product.thumbnail_file_id)
+
+        paths: list[str] = []
+        for file_id in file_ids:
+            file_meta = await self.files.get_by_id(file_id)
+            if file_meta is None:
+                continue
+            paths.append(str(self.storage.resolve_path(file_meta.path)))
+        return paths
 
     async def _resolve_avatar_parameters(
         self,
