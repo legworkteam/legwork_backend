@@ -7,14 +7,17 @@ public product images existed), it backfills a real file. Run with:
 
     .venv/Scripts/python.exe -m scripts.seed
 
-Creates stores, a campaign + QR opaque code, and a demo product catalog
-(products / variants / tags / images / care guides). Product codes use a
-DEMO- prefix until real MCM 품번 data is available. Product thumbnails are
-real generated placeholder PNGs stored as public FileMetadata (fetchable via
-GET /files/{fileId} without auth-owner checks).
+Creates stores, a campaign + QR opaque code, and a product catalog
+(products / variants / tags / images / care guides): a DEMO- prefixed
+placeholder set plus a real MCM catalog (real 품번/가격/상품명, real product
+photos fetched from MCM's public image CDN) for testing OCR product-code
+recognition end-to-end. Product thumbnails are stored as public FileMetadata
+(fetchable via GET /files/{fileId} without auth-owner checks); real photos
+fall back to a generated placeholder PNG if the CDN fetch fails.
 """
 
 import asyncio
+import urllib.request
 import uuid
 
 import cv2
@@ -117,6 +120,118 @@ CATALOG: list[dict] = [
     },
 ]
 
+# Real MCM catalog data (품번/이름/가격/카테고리/썸네일 수동 수집, 2026-08-19).
+# OCR product-code matching needs real 품번 in the DB, not just DEMO- codes --
+# these back the /product-recognitions demo path. `category` stays one of our
+# coarse taxonomy values (bag/wallet/apparel/shoes/accessory); the site's
+# finer-grained category goes into a `subCategory` tag instead. No explicit
+# color/size was collected, so each gets a single DEFAULT/ONE variant.
+# `thumbnailUrl` points at MCM's public Scene7 image CDN (no auth, no bot
+# protection observed) and is fetched at seed time; falls back to the
+# generated placeholder if the fetch fails (e.g. offline, URL rotted).
+MCM_CATALOG: list[dict] = [
+    {
+        "code": "MWSGSTA02CO001", "name": "Aren 비세토스 E/W 숄더백", "category": "bag",
+        "price": 1090000,
+        "tags": {"subCategory": "숄더백 & 크로스백", "brand": "MCM"},
+        "variants": [("DEFAULT", "ONE", 1090000, 5)],
+        "thumbnail_url": "https://images.mcmworldwide.com/i/mcmworldwide/MWSGSTA02CO001_01/MWSGSTA02CO001?fmt=auto&qlt=default",
+    },
+    {
+        "code": "MWKFATA02CO001", "name": "Aren 비세토스 드로우스트링 백팩", "category": "bag",
+        "price": 1490000,
+        "tags": {"subCategory": "백팩 & 벨트백", "brand": "MCM"},
+        "variants": [("DEFAULT", "ONE", 1490000, 5)],
+        "thumbnail_url": "https://images.mcmworldwide.com/i/mcmworldwide/MWKFATA02CO001_01/MWKFATA02CO001?fmt=auto&qlt=default",
+    },
+    {
+        "code": "MWTGSTA034B001", "name": "Aren 비세토스 스쿨 토트", "category": "bag",
+        "price": 1150000,
+        "tags": {"subCategory": "쇼퍼 & 토트백", "brand": "MCM"},
+        "variants": [("DEFAULT", "ONE", 1150000, 5)],
+        "thumbnail_url": "https://images.mcmworldwide.com/i/mcmworldwide/MWTGSTA034B001_01/MWTGSTA034B001?fmt=auto&qlt=default",
+    },
+    {
+        "code": "MWPGSLR03CO001", "name": "New Liz 비세토스 쇼퍼", "category": "bag",
+        "price": 1050000,
+        "tags": {"subCategory": "쇼퍼 & 토트백", "brand": "MCM"},
+        "variants": [("DEFAULT", "ONE", 1050000, 5)],
+        "thumbnail_url": "https://images.mcmworldwide.com/i/mcmworldwide/MWPGSLR03CO001_01/MWPGSLR03CO001?fmt=auto&qlt=default",
+    },
+    {
+        "code": "MWRGSTA02PZ001", "name": "Aren 비세토스 레더 믹스 베니티 케이스", "category": "bag",
+        "price": 990000,
+        "tags": {"subCategory": "숄더백 & 크로스백", "brand": "MCM"},
+        "variants": [("DEFAULT", "ONE", 990000, 5)],
+        "thumbnail_url": "https://images.mcmworldwide.com/i/mcmworldwide/MWRGSTA02PZ001_01/MWRGSTA02PZ001?fmt=auto&qlt=default",
+    },
+    {
+        "code": "MWBGSEA024B001", "name": "Ella 맥시 비세토스 보스턴 백", "category": "bag",
+        "price": 1250000,
+        "tags": {"subCategory": "탑 핸들백", "brand": "MCM"},
+        "variants": [("DEFAULT", "ONE", 1250000, 5)],
+        "thumbnail_url": "https://images.mcmworldwide.com/i/mcmworldwide/MWBGSEA024B001_01/MWBGSEA024B001?fmt=auto&qlt=default",
+    },
+    {
+        "code": "MWHGATA014B001", "name": "Aren 듀오 호보 맥시 비세토스와 카프스킨", "category": "bag",
+        "price": 1290000,
+        "tags": {"subCategory": "숄더백 & 크로스백", "brand": "MCM"},
+        "variants": [("DEFAULT", "ONE", 1290000, 5)],
+        "thumbnail_url": "https://images.mcmworldwide.com/i/mcmworldwide/MWHGATA014B001_01/MWHGATA014B001?fmt=auto&qlt=default",
+    },
+    {
+        "code": "MWPGSLR024B001", "name": "New Liz 비세토스 쇼퍼(M)", "category": "bag",
+        "price": 1090000,
+        "tags": {"subCategory": "쇼퍼 & 토트백", "brand": "MCM"},
+        "variants": [("DEFAULT", "ONE", 1090000, 5)],
+        "thumbnail_url": "https://images.mcmworldwide.com/i/mcmworldwide/MWPGSLR024B001_01/MWPGSLR024B001?fmt=auto&qlt=default",
+    },
+    {
+        "code": "MWTGSMA01BK001", "name": "Milla 스페니시 엠보스드 레더 토트", "category": "bag",
+        "price": 1990000,
+        "tags": {"subCategory": "쇼퍼 & 토트백", "brand": "MCM"},
+        "variants": [("DEFAULT", "ONE", 1990000, 5)],
+        "thumbnail_url": "https://images.mcmworldwide.com/i/mcmworldwide/MWTGSMA01BK001_01/MWTGSMA01BK001?fmt=auto&qlt=default",
+    },
+    {
+        "code": "MMVGSTT04CO001", "name": "Ottomar 비세토스 캐빈 트롤리", "category": "bag",
+        "price": 3550000,
+        "tags": {"subCategory": "트래블 (러기지백)", "brand": "MCM"},
+        "variants": [("DEFAULT", "ONE", 3550000, 5)],
+        "thumbnail_url": "https://images.mcmworldwide.com/i/mcmworldwide/MMVGSTT04CO001_01/MMVGSTT04CO001?fmt=auto&qlt=default",
+    },
+    {
+        "code": "MMVAAVY02CO001", "name": "Ottomar 비세토스 위켄더", "category": "bag",
+        "price": 2050000,
+        "tags": {"subCategory": "트래블 (러기지백)", "brand": "MCM"},
+        "variants": [("DEFAULT", "ONE", 2050000, 5)],
+        "thumbnail_url": "https://images.mcmworldwide.com/i/mcmworldwide/MMVAAVY02CO001_01/MMVAAVY02CO001?fmt=auto&qlt=default",
+    },
+    {
+        "code": "MMVGSTT03CO001", "name": "Ottomar 비세토스 가먼트 백", "category": "bag",
+        "price": 2150000,
+        "tags": {"subCategory": "트래블 (러기지백)", "brand": "MCM"},
+        "variants": [("DEFAULT", "ONE", 2150000, 5)],
+        "thumbnail_url": "https://images.mcmworldwide.com/i/mcmworldwide/MMVGSTT03CO001_01/MMVGSTT03CO001?fmt=auto&qlt=default",
+    },
+    {
+        "code": "MWDGSDU03CO001", "name": "Dessau 비세토스 드로우스트링 백", "category": "bag",
+        "price": 1550000,
+        "tags": {"subCategory": "숄더백 & 크로스백", "brand": "MCM"},
+        "variants": [("DEFAULT", "ONE", 1550000, 5)],
+        "thumbnail_url": "https://images.mcmworldwide.com/i/mcmworldwide/MWDGSDU03CO001_01/MWDGSDU03CO001?fmt=auto&qlt=default",
+    },
+    {
+        "code": "MWPGSMT04BK001", "name": "Toni 맥시 모노그램 레더 탑 지퍼 쇼퍼", "category": "bag",
+        "price": 1290000,
+        "tags": {"subCategory": "쇼퍼 & 토트백", "brand": "MCM"},
+        "variants": [("DEFAULT", "ONE", 1290000, 5)],
+        "thumbnail_url": "https://images.mcmworldwide.com/i/mcmworldwide/MWPGSMT04BK001_01/MWPGSMT04BK001?fmt=auto&qlt=default",
+    },
+]
+
+CATALOG = CATALOG + MCM_CATALOG
+
 
 def _placeholder_png(*, code: str, name: str, category: str) -> bytes:
     """Small generated placeholder product image (demo-only, real photos come later)."""
@@ -132,10 +247,24 @@ def _placeholder_png(*, code: str, name: str, category: str) -> bytes:
     return encoded.tobytes()
 
 
+def _fetch_remote_image(url: str) -> bytes:
+    """Blocking fetch from MCM's public Scene7 image CDN (no auth needed)."""
+    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (AtelierLensSeed/1.0)"})
+    with urllib.request.urlopen(request, timeout=15) as response:  # noqa: S310 - trusted seed-time fetch
+        return response.read()
+
+
 async def _ensure_product_thumbnail(
-    session: AsyncSession, storage: LocalStorageService, product: Product
+    session: AsyncSession,
+    storage: LocalStorageService,
+    product: Product,
+    thumbnail_url: str | None = None,
 ) -> None:
-    """Create (or backfill) a real public FileMetadata-backed thumbnail."""
+    """Create (or backfill) a real public FileMetadata-backed thumbnail.
+
+    Uses the real MCM product photo when `thumbnail_url` is given; falls back
+    to the generated placeholder on missing URL or fetch failure (e.g. offline).
+    """
     image = await session.scalar(
         select(ProductImage)
         .where(ProductImage.product_id == product.id)
@@ -148,12 +277,23 @@ async def _ensure_product_thumbnail(
         if backing is not None:
             return  # already has a real file behind it
 
-    file_id = uuid.uuid4()
+    content: bytes | None = None
+    content_type = "image/png"
     filename = f"{product.product_code}.png"
+    if thumbnail_url:
+        try:
+            content = await asyncio.to_thread(_fetch_remote_image, thumbnail_url)
+            content_type = "image/jpeg"
+            filename = f"{product.product_code}.jpg"
+        except Exception as exc:  # noqa: BLE001 - best-effort, placeholder fallback below
+            print(f"  ! thumbnail fetch failed for {product.product_code}: {exc} -- using placeholder")
+    if content is None:
+        content = _placeholder_png(code=product.product_code, name=product.name, category=product.category or "")
+
+    file_id = uuid.uuid4()
     relative_path = build_private_upload_path(
         owner_type=FileOwnerType.PRODUCT, owner_id=product.id, file_id=file_id, filename=filename
     )
-    content = _placeholder_png(code=product.product_code, name=product.name, category=product.category or "")
     write_result = await storage.save(relative_path=relative_path, content=content)
     session.add(
         FileMetadata(
@@ -162,7 +302,7 @@ async def _ensure_product_thumbnail(
             owner_id=product.id,
             path=write_result.relative_path,
             original_name=filename,
-            content_type="image/png",
+            content_type=content_type,
             size=write_result.size,
             visibility=FileVisibility.PUBLIC,
         )
@@ -272,7 +412,7 @@ async def _seed_product(session: AsyncSession, storage: LocalStorageService, spe
                 ProductTag(product_id=product.id, tag_type=tag_type, tag_value=tag_value)
             )
 
-    await _ensure_product_thumbnail(session, storage, product)
+    await _ensure_product_thumbnail(session, storage, product, spec.get("thumbnail_url"))
 
     care = spec.get("care")
     if care:
