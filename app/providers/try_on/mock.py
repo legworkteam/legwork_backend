@@ -7,12 +7,18 @@ import numpy as np
 
 from app.core.exceptions import GenerationFailedError
 from app.providers.try_on.base import TryOnProvider, TryOnProviderRequest, TryOnProviderResult
+from app.providers.try_on.silhouette import render_avatar_silhouette
 
 
 class MockTryOnProvider(TryOnProvider):
     provider_name = "mock"
 
     async def generate(self, payload: TryOnProviderRequest) -> TryOnProviderResult:
+        if not payload.source_image_path:
+            # Avatar scope: real (non-AI) body-silhouette rendering, not a
+            # placeholder -- no photo exists to fall back to, so this is the
+            # actual feature, regardless of which provider is configured.
+            return await asyncio.to_thread(render_avatar_silhouette, payload)
         return await asyncio.to_thread(self._render, payload)
 
     def _render(self, payload: TryOnProviderRequest) -> TryOnProviderResult:
